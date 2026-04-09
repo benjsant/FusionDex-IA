@@ -38,15 +38,61 @@ IN_MOVES    = Path("data/moves_if.json")
 OUTPUT      = Path("data/movesets_merged.json")
 
 
+# Pokepedia uses old-generation FR names that PokeAPI renamed in Gen 6-7.
+# Maps Pokepedia name → canonical PokeAPI name_fr stored in moves_if.json.
+# Also filters artefact strings that aren't move names at all.
+POKEPEDIA_ALIASES: dict[str, str | None] = {
+    # Old name             → PokeAPI canonical name_fr (None = discard)
+    "Poing de Feu":         "Poing Feu",
+    "Hydroqueue":           "Hydro-Queue",
+    "Dracochoc":            "Draco-Charge",
+    "Tourmagik":            "Zone Magique",
+    "Bomb-Beurk":           "Bombe Beurk",
+    "Fléau":                "Châtiment",
+    "Vampipoing":           "Vampi-Poing",
+    "Aile d'Acier":         "Ailes d'Acier",
+    "Vol-Vie":              "Vampirisme",
+    "Dracogriffe":          "Draco-Griffe",
+    "Dracosouffle":         "Draco-Souffle",
+    "Danse Flamme":         "Danse Flammes",
+    "Dracocharge":          "Draco-Charge",
+    "Cru-Aile":             "Cru-Ailes",
+    "Dynamopoing":          "Dynamo-Poing",
+    "Danse-Plume":          "Danse Plume",
+    "Danse-Fleur":          "Danse Fleur",
+    "Force Cosmik":         "Force Cosmique",
+    "Prélèvem. Destin":     "Prélèvement Destin",
+    "Sonicboom":            "Sonik-Boom",
+    "Stalagtite":           "Stalactite",
+    "Coquilame":            "Coquilames",
+    "Carnareket":           "Crocs Suprêmes",
+    "DélugePlasmique":      "Déluge Plasmique",
+    "Lumiqueue":            "Lumik-Queue",
+    "Bombaimant":           "Bomb-Aimant",
+    "Bomb'Œuf":             "Bomb'Œuf",
+    "Vol-Force":            "Force-Vol",
+    "Végé-Attak":           "Végé-Attaque",
+    # Artefacts — not move names, discard
+    "Ce Pokémon n'apprend aucune capacité par reproduction lors de cette génération.": None,
+    "Grâce à sa capacité":  None,
+}
+
+
 def normalize(name: str) -> str:
     """Normalize move name for fuzzy matching."""
     return (
         name.lower()
-        .replace("'", "'")
-        .replace("'", "'")
+        .replace("\u2019", "'").replace("\u2018", "'")
         .replace("-", " ")
         .strip()
     )
+
+
+def apply_alias(name: str) -> str | None:
+    """Apply Pokepedia→PokeAPI alias if known. Returns None for artefacts."""
+    if name in POKEPEDIA_ALIASES:
+        return POKEPEDIA_ALIASES[name]
+    return name
 
 
 def build_name_fr_to_en(moves: list[dict]) -> dict[str, str]:
@@ -84,10 +130,22 @@ def main() -> None:
     base_index: set[tuple[int, str, str]] = set()
     merged: list[dict] = []
 
+    aliased = 0
+    discarded = 0
     for record in base_movesets:
+        canonical = apply_alias(record["move_name_fr"])
+        if canonical is None:
+            discarded += 1
+            continue
+        if canonical != record["move_name_fr"]:
+            record = {**record, "move_name_fr": canonical}
+            aliased += 1
         key = (record["pokemon_if_id"], normalize(record["move_name_fr"]), record["method"])
         base_index.add(key)
         merged.append(record)
+
+    if aliased or discarded:
+        LOGGER.info("Aliases applied: %d renamed, %d discarded", aliased, discarded)
 
     # ── TMs IF — add CT rows not already present ──────────────────────────────
     # tms_if entries have move_name in EN; we convert to FR for consistency

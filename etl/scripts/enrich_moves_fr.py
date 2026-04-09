@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
@@ -25,12 +27,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 POKEAPI_MOVE  = "https://pokeapi.co/api/v2/move/{}"
 MOVES_FILE    = Path("data/moves_if.json")
-REQUEST_DELAY = 0.1   # secondes
+MAX_WORKERS   = 4
+REQUEST_DELAY = 0.05   # secondes par worker
 
 # Corrections manuelles : nom IF wiki → slug PokeAPI exact
-# Nécessaire quand le nom IF diverge du nom PokeAPI
 MANUAL_SLUGS: dict[str, str] = {
-    "Frustration":         "return",          # IF renomme Return → Frustration ?
     "Smelling Salts":      "smelling-salts",
     "Vice Grip":           "vice-grip",
     "SolarBeam":           "solar-beam",
@@ -76,6 +77,14 @@ def fetch_fr_name(slug: str) -> str | None:
         return None
 
 
+def _enrich_one(move: dict) -> tuple[dict, str | None]:
+    """Fetch FR name for one move. Returns (move, name_fr_or_None)."""
+    slug    = to_slug(move["name_en"])
+    name_fr = fetch_fr_name(slug)
+    time.sleep(REQUEST_DELAY)
+    return move, name_fr
+
+
 def main() -> None:
     if not MOVES_FILE.exists():
         raise FileNotFoundError("data/moves_if.json not found — run extract_moves_if.py first")
@@ -85,32 +94,31 @@ def main() -> None:
     LOGGER.info("%d moves à enrichir en FR (sur %d)", len(to_enrich), len(moves))
 
     found = not_found = 0
+    lock  = threading.Lock()
+    done  = 0
 
-    for i, move in enumerate(moves):
-        if move.get("name_fr"):
-            continue
+    def save() -> None:
+        MOVES_FILE.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
 
-        slug    = to_slug(move["name_en"])
-        name_fr = fetch_fr_name(slug)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_enrich_one, m): m for m in to_enrich}
+        for future in as_completed(futures):
+            move, name_fr = future.result()
+            with lock:
+                done += 1
+                if name_fr:
+                    move["name_fr"] = name_fr
+                    found += 1
+                else:
+                    LOGGER.debug("FR not found: '%s'", move["name_en"])
+                    not_found += 1
+                if done % 100 == 0:
+                    save()
+                    LOGGER.info("[%d/%d] %d trouvés, %d non trouvés", done, len(to_enrich), found, not_found)
 
-        if name_fr:
-            move["name_fr"] = name_fr
-            found += 1
-        else:
-            LOGGER.debug("FR not found: '%s' (slug: %s)", move["name_en"], slug)
-            not_found += 1
-
-        if (i + 1) % 100 == 0:
-            # Sauvegarde intermédiaire
-            MOVES_FILE.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
-            LOGGER.info("[%d/%d] %d trouvés, %d non trouvés", i + 1, len(moves), found, not_found)
-
-        time.sleep(REQUEST_DELAY)
-
-    MOVES_FILE.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
+    save()
     LOGGER.info("Terminé — %d FR trouvés | %d non trouvés", found, not_found)
 
-    # Résumé des non trouvés
     missing = [m["name_en"] for m in moves if not m.get("name_fr")]
     if missing:
         LOGGER.warning("%d moves sans nom FR : %s", len(missing), missing[:20])

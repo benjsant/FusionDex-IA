@@ -183,26 +183,40 @@ def extract_tms(wikitext: str) -> list[dict]:
 
 # ─── Tutors ───────────────────────────────────────────────────────────────────
 
-TUTOR_ROW_RE = re.compile(
-    r"\|-[^\n]*\n"
-    r"\s*\|\s*(?:data-sort-value=\"[^\"]*\"\s*\|\s*)?"
-    r"(?:\[\[(?:[^\]|]*\|)?)?(?P<name>[A-Za-z][^\|\]\n]{1,40})(?:\]\])?\s*\n"
-    r"\s*\|\s*(?P<location>[^\|\n]+)",
-    re.MULTILINE,
-)
+# Non-move entries to skip from the tutor table
+TUTOR_SKIP = {"Move Teacher", "Move Deleter", "Egg Moves"}
+
 
 def extract_tutors(wikitext: str) -> list[dict]:
+    """
+    Parse the List_of_Tutors table.
+    Format per row:
+      |-
+      |[[bulbapedia:Move Name (move)|Move Name]]  (or bare text)
+      |Location
+      |Additional info
+      |Price
+    """
     tutors: list[dict] = []
     seen: set[str]     = set()
 
-    for m in TUTOR_ROW_RE.finditer(wikitext):
-        name = clean(m.group("name"))
-        if not name or name in seen:
+    rows = re.split(r"\n\|-", wikitext)
+    for row in rows[1:]:   # skip table header row
+        lines = [l.strip() for l in row.strip().splitlines() if l.strip()]
+        cells = [l.lstrip("|").strip() for l in lines if l.startswith("|") and not l.startswith("|-") and not l.startswith("!")]
+        if len(cells) < 2:
+            continue
+        name     = clean(cells[0])
+        location = clean(cells[1])
+        if not name or name in TUTOR_SKIP or name in seen:
+            continue
+        # Skip generic entries that contain spaces in suspicious patterns
+        if name.startswith("{{") or not name[0].isalpha():
             continue
         seen.add(name)
         tutors.append({
             "move_name": name,
-            "location":  clean(m.group("location")),
+            "location":  location,
         })
 
     LOGGER.info("Parsed %d tutor moves", len(tutors))
@@ -226,7 +240,7 @@ def main() -> None:
 
     LOGGER.info("Fetching List of Tutors from IF wiki...")
     try:
-        tutors = extract_tutors(fetch_wikitext("List_of_Move_Tutors"))
+        tutors = extract_tutors(fetch_wikitext("List_of_Tutors"))
     except Exception:
         tutors = []
         LOGGER.warning("List of Tutors non disponible — skipped")

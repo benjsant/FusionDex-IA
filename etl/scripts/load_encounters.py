@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
 import psycopg2
@@ -71,19 +72,11 @@ def load_encounters(conn) -> None:
             if method not in VALID_METHODS:
                 method = "wild"
 
-            # Resolve pokemon_id
-            pokemon_id: int | None = None
-            if e.get("national_id"):
-                pokemon_id = by_national.get(e["national_id"])
-            if pokemon_id is None and e.get("pokemon_name"):
-                pokemon_id = by_name.get(e["pokemon_name"].lower())
+            # Split multi-Pokémon names like "Ho-Oh / Lugia" or "Dialga/Palkia/Giratina"
+            raw_name = e.get("pokemon_name") or ""
+            candidate_names = [n.strip() for n in re.split(r"\s*/\s*", raw_name) if n.strip()] if raw_name else [raw_name]
 
-            if pokemon_id is None:
-                LOGGER.debug("Cannot resolve Pokémon: %s", e.get("pokemon_name"))
-                no_pokemon += 1
-                continue
-
-            # Build notes
+            # Build notes (shared across all candidates)
             notes_parts = []
             if e.get("encounter_rate"):
                 notes_parts.append(f"rate:{e['encounter_rate']}")
@@ -94,18 +87,33 @@ def load_encounters(conn) -> None:
                 notes_parts.append(e["notes"])
             notes = " | ".join(notes_parts) or None
 
-            try:
-                cur.execute(
-                    "INSERT INTO pokemon_location (pokemon_id, location_id, method, notes) "
-                    "VALUES (%s, %s, %s, %s) "
-                    "ON CONFLICT (pokemon_id, location_id, method) DO UPDATE SET notes = EXCLUDED.notes",
-                    (pokemon_id, loc_id, method, notes),
-                )
-                inserted += 1
-            except psycopg2.Error as exc:
-                LOGGER.warning("Insert error for %s @ %s: %s", e.get("pokemon_name"), loc_name, exc)
-                conn.rollback()
-                skipped += 1
+            # For multi-Pokémon entries insert one row per Pokémon
+            resolved_any = False
+            for candidate in candidate_names:
+                pid: int | None = None
+                if e.get("national_id") and len(candidate_names) == 1:
+                    pid = by_national.get(e["national_id"])
+                if pid is None:
+                    pid = by_name.get(candidate.lower())
+                if pid is None:
+                    continue
+                try:
+                    cur.execute(
+                        "INSERT INTO pokemon_location (pokemon_id, location_id, method, notes) "
+                        "VALUES (%s, %s, %s, %s) "
+                        "ON CONFLICT (pokemon_id, location_id, method) DO UPDATE SET notes = EXCLUDED.notes",
+                        (pid, loc_id, method, notes),
+                    )
+                    inserted += 1
+                    resolved_any = True
+                except psycopg2.Error as exc:
+                    LOGGER.warning("Insert error for %s @ %s: %s", candidate, loc_name, exc)
+                    conn.rollback()
+                    skipped += 1
+
+            if not resolved_any:
+                LOGGER.debug("Cannot resolve Pokémon: %s", raw_name)
+                no_pokemon += 1
 
         conn.commit()
         LOGGER.info(
@@ -119,6 +127,10 @@ def main() -> None:
     conn = get_connection()
     try:
         load_encounters(conn)
+    except Exception:
+        conn.rollback()
+        LOGGER.exception("load_encounters failed — rolling back")
+        raise
     finally:
         conn.close()
 
