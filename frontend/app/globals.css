@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: rgb(15 15 20);
+    color: rgb(240 240 255);
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(20 20 28);
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(60 60 80);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(99 102 241);
+}

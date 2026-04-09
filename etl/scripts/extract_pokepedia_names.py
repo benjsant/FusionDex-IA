@@ -1,0 +1,116 @@
+"""
+ETL Step 2b — Build name_en → Pokepedia mapping.
+
+Scrapes https://www.pokepedia.fr/Liste_des_Pokémon_dans_l'ordre_du_Pokédex_National
+using requests + lxml (already pulled in by Scrapy) to extract for each Pokémon:
+  - national_id
+  - name_fr  (French name = Pokepedia page slug)
+  - name_en  (English name = join key with IF data)
+  - gen7_url e.g. https://www.pokepedia.fr/Bulbizarre/Génération_7
+
+Output: data/pokepedia_names.json
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+from urllib.parse import unquote
+
+import requests
+from lxml import html
+
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+LIST_URL = (
+    "https://www.pokepedia.fr/"
+    "Liste_des_Pok%C3%A9mon_dans_l%27ordre_du_Pok%C3%A9dex_National"
+)
+OUTPUT = Path("data/pokepedia_names.json")
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36 "
+        "(Educational project - Pokemon Infinite Fusion)"
+    )
+}
+
+
+def fetch_page() -> bytes:
+    resp = requests.get(LIST_URL, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    return resp.content
+
+
+def parse_list(content: bytes) -> list[dict]:
+    """
+    Parse the Pokémon list table with lxml.
+    Columns: N° | Image | FR name (link) | EN name | DE name | JP name | Types
+    """
+    tree    = html.fromstring(content)
+    results = []
+    seen: set[int] = set()
+
+    # Find all table rows that look like Pokémon entries
+    rows = tree.xpath("//table//tr[td]")
+
+    for row in rows:
+        cells = row.xpath("td")
+        if len(cells) < 4:
+            continue
+
+        # Cell 0: national ID — strip leading zeros and # symbols
+        id_text = re.sub(r"[^0-9]", "", cells[0].text_content().strip())
+        if not id_text:
+            continue
+        national_id = int(id_text)
+
+        if national_id in seen:
+            continue
+        seen.add(national_id)
+
+        # Cell 2: French name + internal link → slug
+        fr_links = cells[2].xpath(".//a[@href]")
+        if fr_links:
+            name_fr      = fr_links[0].text_content().strip()
+            raw_href     = fr_links[0].get("href", "")
+            # href is like /Bulbizarre — decode percent-encoding
+            pokepedia_slug = unquote(raw_href.lstrip("/"))
+        else:
+            name_fr        = cells[2].text_content().strip()
+            pokepedia_slug = name_fr.replace(" ", "_")
+
+        # Cell 3: English name (link goes to Bulbapedia externally, text is EN name)
+        name_en = cells[3].text_content().strip()
+
+        if not name_en or not name_fr:
+            continue
+
+        results.append({
+            "national_id":    national_id,
+            "name_en":        name_en,
+            "name_fr":        name_fr,
+            "pokepedia_slug": pokepedia_slug,
+            "gen7_url":       f"https://www.pokepedia.fr/{pokepedia_slug}/Génération_7",
+        })
+
+    return sorted(results, key=lambda x: x["national_id"])
+
+
+def main() -> None:
+    Path("data").mkdir(parents=True, exist_ok=True)
+
+    LOGGER.info("Fetching Pokepedia Pokémon list...")
+    content = fetch_page()
+    entries = parse_list(content)
+
+    OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+    LOGGER.info("Saved %d entries → %s", len(entries), OUTPUT)
+
+
+if __name__ == "__main__":
+    main()

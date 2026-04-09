@@ -1,0 +1,41 @@
+{
+  // ── Terminal : ouvrir dans la distrobox fedora_utils ──────────────────────
+  "terminal.integrated.profiles.linux": {
+    "fedora_utils (distrobox)": {
+      "path": "distrobox",
+      "args": ["enter", "fedora_utils", "--"]
+    },
+    "bash": {
+      "path": "bash"
+    }
+  },
+  "terminal.integrated.defaultProfile.linux": "fedora_utils (distrobox)",
+
+  // ── Node / ESLint / TypeScript ─────────────────────────────────────────────
+  "eslint.nodePath": "/home/drawile/.local/bin",
+
+  // ── Python (backend) : venv géré par uv ───────────────────────────────────
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+
+  // ── Fichiers à ignorer dans l'explorateur ─────────────────────────────────
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/__pycache__": true,
+    "**/.venv": true,
+    "**/data/sprites": true
+  },
+
+  // ── Formatage ──────────────────────────────────────────────────────────────
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

@@ -1,0 +1,114 @@
+services:
+  db:
+    image: postgres:15
+    container_name: fusiondex_postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fusiondex_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fusiondex_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fusiondex_user -d fusiondex_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  etl:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.etl
+    container_name: fusiondex_etl
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-fusiondex_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fusiondex_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusiondex_password}
+    volumes:
+      - ./etl:/app/etl
+      - ./data:/app/data
+      - ./docker:/app/docker
+    networks:
+      - backend
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: fusiondex_backend
+    depends_on:
+      db:
+        condition: service_healthy
+      etl:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-fusiondex_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fusiondex_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusiondex_password}
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  sprites:
+    image: nginx:alpine
+    container_name: fusiondex_sprites
+    volumes:
+      - ./data/sprites:/usr/share/nginx/html/sprites:ro
+    ports:
+      - "8080:80"
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_SPRITES_URL: http://localhost:8080
+    container_name: fusiondex_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:

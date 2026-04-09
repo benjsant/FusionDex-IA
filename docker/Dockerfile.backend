@@ -1,0 +1,19 @@
+FROM python:3.12-slim
+
+# Copy uv binary from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install to system Python (no venv needed in containers)
+ENV UV_SYSTEM_PYTHON=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install dependencies (layer cached separately from source code)
+COPY backend/pyproject.toml ./
+RUN uv pip install --no-cache .
+
+COPY backend/ ./backend/
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -205,3 +205,27 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# FusionDex — generated data (sprites, JSON extracts)
+data/sprites/
+data/*.json
+data/*.csv
+data/sprite_credits.csv
+data/sprites_last_sha.txt
+
+# External reference projects
+lets-go-predictiondex/
+
+# Plan/notes files
+PLAN.md
+PLAN_FRONTEND.md
+claude.md
+
+# Prefect
+.prefect/
+
+# Next.js frontend
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+frontend/out/
