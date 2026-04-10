@@ -30,6 +30,9 @@ MOVES_FILE    = Path("data/moves_if.json")
 MAX_WORKERS   = 4
 REQUEST_DELAY = 0.05   # secondes par worker
 
+# Priorité de version pour la description FR — on prend la plus récente disponible
+VERSION_PRIO = ["ultra-sun-ultra-moon", "sun-moon", "omega-ruby-alpha-sapphire", "x-y", "black-2-white-2", "black-white"]
+
 # Corrections manuelles : nom IF wiki → slug PokeAPI exact
 MANUAL_SLUGS: dict[str, str] = {
     "Smelling Salts":      "smelling-salts",
@@ -62,27 +65,42 @@ def to_slug(name_en: str) -> str:
     return name_en.lower().replace(" ", "-").replace("'", "").replace(".", "")
 
 
-def fetch_fr_name(slug: str) -> str | None:
+def fetch_fr_data(slug: str) -> tuple[str | None, str | None]:
+    """Returns (name_fr, description_fr) — one description max, most recent version."""
     try:
         resp = requests.get(POKEAPI_MOVE.format(slug), timeout=10)
         if resp.status_code != 200:
-            return None
+            return None, None
         data = resp.json()
-        for entry in data.get("names", []):
-            if entry["language"]["name"] == "fr":
-                return entry["name"]
-        return None
     except Exception as e:
         LOGGER.debug("PokeAPI error '%s': %s", slug, e)
-        return None
+        return None, None
+
+    name_fr = next(
+        (e["name"] for e in data.get("names", []) if e["language"]["name"] == "fr"),
+        None,
+    )
+
+    desc_fr = None
+    for vg in VERSION_PRIO:
+        desc_fr = next(
+            (e["flavor_text"] for e in data.get("flavor_text_entries", [])
+             if e["language"]["name"] == "fr" and e["version_group"]["name"] == vg),
+            None,
+        )
+        if desc_fr:
+            desc_fr = desc_fr.replace("\n", " ").replace("\xa0", " ")
+            break
+
+    return name_fr, desc_fr
 
 
-def _enrich_one(move: dict) -> tuple[dict, str | None]:
-    """Fetch FR name for one move. Returns (move, name_fr_or_None)."""
-    slug    = to_slug(move["name_en"])
-    name_fr = fetch_fr_name(slug)
+def _enrich_one(move: dict) -> tuple[dict, str | None, str | None]:
+    """Fetch FR name + description for one move."""
+    slug = to_slug(move["name_en"])
+    name_fr, desc_fr = fetch_fr_data(slug)
     time.sleep(REQUEST_DELAY)
-    return move, name_fr
+    return move, name_fr, desc_fr
 
 
 def main() -> None:
@@ -103,11 +121,12 @@ def main() -> None:
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         futures = {pool.submit(_enrich_one, m): m for m in to_enrich}
         for future in as_completed(futures):
-            move, name_fr = future.result()
+            move, name_fr, desc_fr = future.result()
             with lock:
                 done += 1
                 if name_fr:
-                    move["name_fr"] = name_fr
+                    move["name_fr"]        = name_fr
+                    move["description_fr"] = desc_fr
                     found += 1
                 else:
                     LOGGER.debug("FR not found: '%s'", move["name_en"])

@@ -226,7 +226,9 @@ def load_moves(conn, moves: list[dict], type_map: dict) -> dict[str, int]:
                    (name_en, name_fr, type_id, category, power, accuracy, pp,
                     description_en, description_fr, source)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                   ON CONFLICT (name_en) DO NOTHING""",
+                   ON CONFLICT (name_en) DO UPDATE SET
+                     name_fr = EXCLUDED.name_fr,
+                     description_fr = EXCLUDED.description_fr""",
                 (
                     m["name_en"], m.get("name_fr"), type_id,
                     m.get("category", "Status"),
