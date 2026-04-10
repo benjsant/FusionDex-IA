@@ -5,8 +5,8 @@ Steps:
   1.  extract_pokedex_if       — 572 Pokémon from IF wiki (501 in-game + 71 Hoenn-only)
   2a. extract_stats_pokeapi    — stats + name_fr + evolutions from PokeAPI
   2b. extract_pokepedia_names  — name_en → Pokepedia slug + gen7 URL mapping
-  3.  extract_moves_if         — 676 moves + 121 TMs + tutors from IF wiki
-  3b. enrich_moves_fr          — add name_fr to moves via PokeAPI
+  3.  extract_moves_if         — 676 moves + 121 TMs + 40 tutors + 57 expert tutors from IF wiki
+  3b. enrich_moves_fr          — add name_fr + description_fr to moves via PokeAPI
   4.  extract_abilities_if     — 178 abilities from IF wiki
   4b. enrich_abilities_fr      — add name_fr + description_fr to abilities via PokeAPI
   5.  extract_encounters_if    — wild/static/legendary encounters (location + method + level)

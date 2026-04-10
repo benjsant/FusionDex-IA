@@ -31,11 +31,12 @@ from pathlib import Path
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-IN_MOVESETS = Path("data/movesets_base.json")
-IN_TMS      = Path("data/tms_if.json")
-IN_TUTORS   = Path("data/tutors_if.json")
-IN_MOVES    = Path("data/moves_if.json")
-OUTPUT      = Path("data/movesets_merged.json")
+IN_MOVESETS       = Path("data/movesets_base.json")
+IN_TMS            = Path("data/tms_if.json")
+IN_TUTORS         = Path("data/tutors_if.json")
+IN_EXPERT_TUTORS  = Path("data/expert_tutors_if.json")
+IN_MOVES          = Path("data/moves_if.json")
+OUTPUT            = Path("data/movesets_merged.json")
 
 
 # Pokepedia uses old-generation FR names that PokeAPI renamed in Gen 6-7.
@@ -126,10 +127,11 @@ def main() -> None:
         if not f.exists():
             raise FileNotFoundError(f"{f} not found — run prior ETL steps first")
 
-    base_movesets : list[dict] = json.loads(IN_MOVESETS.read_text())
-    tms_if        : list[dict] = json.loads(IN_TMS.read_text())
-    tutors_if     : list[dict] = json.loads(IN_TUTORS.read_text())
-    moves_if      : list[dict] = json.loads(IN_MOVES.read_text())
+    base_movesets  : list[dict] = json.loads(IN_MOVESETS.read_text())
+    tms_if         : list[dict] = json.loads(IN_TMS.read_text())
+    tutors_if      : list[dict] = json.loads(IN_TUTORS.read_text())
+    expert_tutors  : list[dict] = json.loads(IN_EXPERT_TUTORS.read_text()) if IN_EXPERT_TUTORS.exists() else []
+    moves_if       : list[dict] = json.loads(IN_MOVES.read_text())
 
     en_to_fr = build_name_en_to_fr(moves_if)
     fr_to_en = build_name_fr_to_en(moves_if)
@@ -194,6 +196,15 @@ def main() -> None:
 
     LOGGER.info("IF Tutors mapped to FR names: %d", len(if_tutor_names_fr))
 
+    # ── Expert Tutors IF — Move Expert moves (Knot/Boon Island) ──────────────
+    if_expert_names_fr: set[str] = set()
+    for expert in expert_tutors:
+        name_fr = en_to_fr.get(normalize(expert["move_name"]))
+        if name_fr:
+            if_expert_names_fr.add(normalize(name_fr))
+
+    LOGGER.info("IF Expert Tutors mapped to FR names: %d", len(if_expert_names_fr))
+
     # ── Flag existing base records that are also IF TMs or tutors ────────────
     # Update source for moves that are ALSO available via IF-specific methods
     override_count = 0
@@ -236,6 +247,20 @@ def main() -> None:
             tutor_key = (if_id, norm, "tutor")
             if tutor_key not in base_index:
                 base_index.add(tutor_key)
+                merged.append({
+                    "pokemon_if_id": if_id,
+                    "move_name_fr":  record["move_name_fr"],
+                    "method":        "tutor",
+                    "level":         None,
+                    "source":        "infinite_fusion",
+                })
+                override_count += 1
+
+        # Same for expert tutors (Move Expert — Heart Scales)
+        if norm in if_expert_names_fr:
+            expert_key = (if_id, norm, "tutor")
+            if expert_key not in base_index:
+                base_index.add(expert_key)
                 merged.append({
                     "pokemon_if_id": if_id,
                     "move_name_fr":  record["move_name_fr"],
