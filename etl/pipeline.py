@@ -181,6 +181,12 @@ def main(force: bool = False) -> None:
         "Step 9b/10 — Load encounters into location + pokemon_location",
     )
 
+    # Step 9c — Enrich pokemon.pokepedia_url from pokepedia_names.json
+    run(
+        ["python", str(SCRIPTS_DIR / "enrich_pokemon_fr.py")],
+        "Step 9c/10 — Enrich pokemon.pokepedia_url from Pokepedia mapping",
+    )
+
     # Step 10 — Download & extract fusion sprites from infinitefusion.net
     run(
         ["python", str(SCRIPTS_DIR / "extract_sprites.py")],
