@@ -45,6 +45,13 @@ ENTRY_RE = re.compile(
 # Pokémon marked "Not in game" / "Hoenn only"
 HOENN_ONLY_RE = re.compile(r"not in game|hoenn", re.IGNORECASE)
 
+# The 18 standard Pokémon types (lowercase)
+STANDARD_TYPES = {
+    "normal", "fire", "water", "electric", "grass", "ice", "fighting",
+    "poison", "ground", "flying", "psychic", "bug", "rock", "ghost",
+    "dragon", "dark", "steel", "fairy",
+}
+
 # Generation boundaries (IF Pokédex index → gen number)
 # Gen 1: index 1-151 / Gen 2: 152-251 / Gen 3+: 252+
 GEN_BOUNDARIES = [
@@ -89,8 +96,16 @@ def parse_entries(wikitext: str) -> list[dict]:
         index    = int(match.group("index"))
         if_id    = int(match.group("id"))
         name     = clean_wikitext(match.group("name"))
-        type1    = clean_wikitext(match.group("type1")).lower() or None
-        type2    = clean_wikitext(match.group("type2")).lower() or None
+        type1_raw = clean_wikitext(match.group("type1")).lower() or None
+        type2_raw = clean_wikitext(match.group("type2")).lower() or None
+
+        type1 = type1_raw if type1_raw in STANDARD_TYPES else None
+        type2 = type2_raw if type2_raw in STANDARD_TYPES else None
+
+        if type1_raw and not type1:
+            LOGGER.warning("Invalid type1 %r for #%d %s — set to None", type1_raw, if_id, name)
+        if type2_raw and not type2:
+            LOGGER.warning("Invalid type2 %r for #%d %s — set to None", type2_raw, if_id, name)
         location = clean_wikitext(match.group("location"))
         notes    = clean_wikitext(match.group("notes") or "")
 

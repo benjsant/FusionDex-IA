@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Move, Pokemon, PokemonEvolution, PokemonMove, Type, TypeEffectiveness
+from backend.db.models import Move, Pokemon, PokemonEvolution, PokemonLocation, PokemonMove, Type, TypeEffectiveness
 
 
 def list_pokemon(db: Session) -> list[Pokemon]:
@@ -101,5 +101,17 @@ def get_pokemon_evolutions(db: Session, pokemon_id: int) -> list[PokemonEvolutio
         db.query(PokemonEvolution)
         .options(joinedload(PokemonEvolution.evolves_into))
         .filter(PokemonEvolution.pokemon_id == pokemon_id)
+        .all()
+    )
+
+
+def get_pokemon_locations(db: Session, pokemon_id: int) -> list[PokemonLocation]:
+    """Encounter locations for a Pokémon, with location name eagerly loaded."""
+    from backend.db.models import Location  # noqa: PLC0415
+    return (
+        db.query(PokemonLocation)
+        .options(joinedload(PokemonLocation.location))
+        .filter(PokemonLocation.pokemon_id == pokemon_id)
+        .order_by(PokemonLocation.method)
         .all()
     )

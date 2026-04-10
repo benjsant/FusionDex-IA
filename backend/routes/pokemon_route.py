@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
 from backend.schemas.evolution import EvolutionOut
+from backend.schemas.location import LocationOut
 from backend.schemas.move import PokemonMoveOut
 from backend.schemas.pokemon import AbilityOut, PokemonDetail, PokemonListItem, TypeOut
 from backend.schemas.weakness import WeaknessOut
@@ -10,6 +11,7 @@ from backend.services.pokemon_service import (
     compute_pokemon_weaknesses,
     get_pokemon_by_id,
     get_pokemon_evolutions,
+    get_pokemon_locations,
     get_pokemon_moves,
     list_pokemon,
     search_pokemon,
@@ -54,6 +56,7 @@ def get_pokemon_list(db: Session = Depends(get_db)):
             types=_serialize_types(p.types),
             sprite_path=p.sprite_path,
             is_hoenn_only=p.is_hoenn_only,
+            pokepedia_url=p.pokepedia_url,
         )
         for p in pokemons
     ]
@@ -75,6 +78,7 @@ def search_pokemon_route(
             types=_serialize_types(p.types),
             sprite_path=p.sprite_path,
             is_hoenn_only=p.is_hoenn_only,
+            pokepedia_url=p.pokepedia_url,
         )
         for p in pokemons
     ]
@@ -101,6 +105,7 @@ def get_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
         base_experience=p.base_experience,
         is_hoenn_only=p.is_hoenn_only,
         sprite_path=p.sprite_path,
+        pokepedia_url=p.pokepedia_url,
         types=_serialize_types(p.types),
         abilities=_serialize_abilities(p.abilities),
     )
@@ -159,6 +164,24 @@ def get_evolutions_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
             item_name_fr=r.item_name_fr,
             if_override=r.if_override,
             if_notes=r.if_notes,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{pokemon_id}/locations", response_model=list[LocationOut])
+def get_locations_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
+    """Lieux d'encounter d'un Pokémon (wild, static, legendary…)."""
+    p = get_pokemon_by_id(db, pokemon_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Pokémon not found")
+    rows = get_pokemon_locations(db, pokemon_id)
+    return [
+        LocationOut(
+            location_id=r.location_id,
+            location_name=r.location.name_en,
+            method=r.method,
+            notes=r.notes,
         )
         for r in rows
     ]

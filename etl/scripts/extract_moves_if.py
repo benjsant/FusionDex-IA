@@ -25,10 +25,11 @@ from etl.utils.http import get_json
 LOGGER   = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-WIKI_API   = "https://infinitefusion.fandom.com/api.php"
-OUT_MOVES  = Path("data/moves_if.json")
-OUT_TMS    = Path("data/tms_if.json")
-OUT_TUTORS = Path("data/tutors_if.json")
+WIKI_API          = "https://infinitefusion.fandom.com/api.php"
+OUT_MOVES         = Path("data/moves_if.json")
+OUT_TMS           = Path("data/tms_if.json")
+OUT_TUTORS        = Path("data/tutors_if.json")
+OUT_EXPERT_TUTORS = Path("data/expert_tutors_if.json")
 
 # Section headers: ==Bug-type== or ==Bug-type moves==
 TYPE_HEADER_RE = re.compile(r"^==\s*([A-Za-z]+(?:/[A-Za-z]+)?)-type(?:\s+moves)?\s*==$", re.MULTILINE)
@@ -183,30 +184,102 @@ def extract_tms(wikitext: str) -> list[dict]:
 
 # ─── Tutors ───────────────────────────────────────────────────────────────────
 
-TUTOR_ROW_RE = re.compile(
-    r"\|-[^\n]*\n"
-    r"\s*\|\s*(?:data-sort-value=\"[^\"]*\"\s*\|\s*)?"
-    r"(?:\[\[(?:[^\]|]*\|)?)?(?P<name>[A-Za-z][^\|\]\n]{1,40})(?:\]\])?\s*\n"
-    r"\s*\|\s*(?P<location>[^\|\n]+)",
-    re.MULTILINE,
-)
+# Non-move entries to skip from the tutor table
+TUTOR_SKIP = {"Move Teacher", "Move Deleter", "Egg Moves"}
+
 
 def extract_tutors(wikitext: str) -> list[dict]:
+    """
+    Parse the List_of_Tutors table.
+    Format per row:
+      |-
+      |[[bulbapedia:Move Name (move)|Move Name]]  (or bare text)
+      |Location
+      |Additional info
+      |Price
+    """
     tutors: list[dict] = []
     seen: set[str]     = set()
 
-    for m in TUTOR_ROW_RE.finditer(wikitext):
-        name = clean(m.group("name"))
-        if not name or name in seen:
+    rows = re.split(r"\n\|-", wikitext)
+    for row in rows[1:]:   # skip table header row
+        lines = [l.strip() for l in row.strip().splitlines() if l.strip()]
+        cells = [l.lstrip("|").strip() for l in lines if l.startswith("|") and not l.startswith("|-") and not l.startswith("!")]
+        if len(cells) < 2:
+            continue
+        name     = clean(cells[0])
+        location = clean(cells[1])
+        if not name or name in TUTOR_SKIP or name in seen:
+            continue
+        # Skip generic entries that contain spaces in suspicious patterns
+        if name.startswith("{{") or not name[0].isalpha():
             continue
         seen.add(name)
         tutors.append({
             "move_name": name,
-            "location":  clean(m.group("location")),
+            "location":  location,
         })
 
     LOGGER.info("Parsed %d tutor moves", len(tutors))
     return tutors
+
+
+# ─── Move Expert Tutors ───────────────────────────────────────────────────────
+
+def extract_expert_tutors(wikitext: str) -> list[dict]:
+    """
+    Parse List_of_Move_Expert_Moves — two tables:
+      == Move Expert (Knot Island) ==   → location: 'Knot Island (Move Expert)'
+      == Legendary Move Expert (Boon Island) == → location: 'Boon Island (Legendary Move Expert)'
+
+    Only extract move names (first column).  rowspan continuation rows contain
+    Pokémon/type lists — filtered out by checking for commas or single words
+    that are not move names.
+    """
+    expert_tutors: list[dict] = []
+    seen: set[str]            = set()
+
+    # Split on == section headers to get location context
+    sections = re.split(r"==+\s*", wikitext)
+    current_location: str = ""
+
+    for section in sections:
+        if section.startswith("Move Expert (Knot Island)"):
+            current_location = "Knot Island (Move Expert)"
+        elif "Legendary Move Expert" in section or "Boon Island" in section:
+            current_location = "Boon Island (Legendary Move Expert)"
+
+        if not current_location:
+            continue
+
+        rows = re.split(r"\n\|-", section)
+        for row in rows[1:]:
+            lines = [l.strip() for l in row.splitlines() if l.strip()]
+            cells = [l.lstrip("|").strip() for l in lines
+                     if l.startswith("|") and not l.startswith("|-") and not l.startswith("!")]
+            if not cells:
+                continue
+
+            # Remove rowspan prefix: rowspan="2" | Move Name
+            raw = re.sub(r'rowspan="\d+"\s*\|\s*', "", cells[0]).strip()
+            name = clean(raw)
+
+            # Skip: empty, dashes, Pokémon lists (contain commas), single bare words that aren't moves
+            if not name or name == "-" or "," in name:
+                continue
+            if not name[0].isupper():
+                continue
+            if name in seen:
+                continue
+
+            seen.add(name)
+            expert_tutors.append({
+                "move_name": name,
+                "location":  current_location,
+            })
+
+    LOGGER.info("Parsed %d expert tutor moves", len(expert_tutors))
+    return expert_tutors
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -226,12 +299,21 @@ def main() -> None:
 
     LOGGER.info("Fetching List of Tutors from IF wiki...")
     try:
-        tutors = extract_tutors(fetch_wikitext("List_of_Move_Tutors"))
+        tutors = extract_tutors(fetch_wikitext("List_of_Tutors"))
     except Exception:
         tutors = []
         LOGGER.warning("List of Tutors non disponible — skipped")
     OUT_TUTORS.write_text(json.dumps(tutors, ensure_ascii=False, indent=2))
     LOGGER.info("Saved %d tutors → %s", len(tutors), OUT_TUTORS)
+
+    LOGGER.info("Fetching List of Move Expert Moves from IF wiki...")
+    try:
+        expert_tutors = extract_expert_tutors(fetch_wikitext("List_of_Move_Expert_Moves"))
+    except Exception:
+        expert_tutors = []
+        LOGGER.warning("List_of_Move_Expert_Moves non disponible — skipped")
+    OUT_EXPERT_TUTORS.write_text(json.dumps(expert_tutors, ensure_ascii=False, indent=2))
+    LOGGER.info("Saved %d expert tutor moves → %s", len(expert_tutors), OUT_EXPERT_TUTORS)
 
 
 if __name__ == "__main__":

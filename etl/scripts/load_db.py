@@ -226,7 +226,9 @@ def load_moves(conn, moves: list[dict], type_map: dict) -> dict[str, int]:
                    (name_en, name_fr, type_id, category, power, accuracy, pp,
                     description_en, description_fr, source)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                   ON CONFLICT (name_en) DO NOTHING""",
+                   ON CONFLICT (name_en) DO UPDATE SET
+                     name_fr = EXCLUDED.name_fr,
+                     description_fr = EXCLUDED.description_fr""",
                 (
                     m["name_en"], m.get("name_fr"), type_id,
                     m.get("category", "Status"),
@@ -408,65 +410,46 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
     LOGGER.info("Loaded evolutions")
 
 
-def load_locations(conn, locations_data: list[dict]) -> None:
-    pokemon_name_to_id: dict[str, int] = {}
-    with conn.cursor() as cur:
-        cur.execute("SELECT id, name_en FROM pokemon")
-        for db_id, name_en in cur.fetchall():
-            pokemon_name_to_id[name_en.lower()] = db_id
 
-    location_map: dict[str, int] = {}
-    with conn.cursor() as cur:
-        for entry in locations_data:
-            for loc in entry.get("locations", []):
-                name = loc["name"]
-                if name in location_map:
-                    continue
-                cur.execute(
-                    "INSERT INTO location (name_en, region) VALUES (%s, %s) "
-                    "ON CONFLICT (name_en) DO NOTHING RETURNING id",
-                    (name, loc.get("region", "Other")),
-                )
-                row = cur.fetchone()
-                if row:
-                    location_map[name] = row[0]
-        conn.commit()
-        cur.execute("SELECT id, name_en FROM location")
-        for db_id, name_en in cur.fetchall():
-            location_map[name_en] = db_id
 
-    with conn.cursor() as cur:
-        for entry in locations_data:
-            poke_id = pokemon_name_to_id.get(entry["pokemon_name"].lower())
-            if not poke_id:
-                continue
-            for loc in entry.get("locations", []):
-                loc_id = location_map.get(loc["name"])
-                if not loc_id:
-                    continue
-                cur.execute(
-                    "INSERT INTO pokemon_location (pokemon_id, location_id, method, notes) "
-                    "VALUES (%s, %s, %s, %s) "
-                    "ON CONFLICT (pokemon_id, location_id, method) DO NOTHING",
-                    (poke_id, loc_id, loc.get("method", "wild"), loc.get("notes", "")),
-                )
-        conn.commit()
-    LOGGER.info("Loaded locations")
+def _normalize_move_name(name: str) -> str:
+    """Normalize FR move name for fuzzy lookup.
+
+    Handles the two main mismatches between Pokepedia and PokeAPI names:
+      - Apostrophe variants: ' (U+2019) ↔ ' (U+0027)
+      - Hyphens vs spaces: 'Cage-Éclair' ↔ 'Cage Éclair'
+    """
+    name = name.lower()
+    name = name.replace("\u2019", "'").replace("\u2018", "'")  # curly → straight
+    name = name.replace("-", " ")
+    return name
+
+
+def _build_move_fr_lookup(move_fr_map: dict[str, int]) -> dict[str, int]:
+    """Build an extended lookup with normalized keys for fuzzy matching."""
+    lookup: dict[str, int] = {}
+    for name_fr, db_id in move_fr_map.items():
+        lookup[name_fr] = db_id                        # exact (already lowered)
+        lookup[_normalize_move_name(name_fr)] = db_id  # normalized
+    return lookup
 
 
 def load_movesets(conn, movesets: list[dict], move_map: dict) -> None:
     """Load pokemon_move from movesets_merged.json (name_fr as key)."""
-    # Build move_name_fr → move_id map
     move_fr_map: dict[str, int] = {}
     with conn.cursor() as cur:
         cur.execute("SELECT id, name_fr FROM move WHERE name_fr IS NOT NULL")
         for db_id, name_fr in cur.fetchall():
             move_fr_map[name_fr.lower()] = db_id
 
+    # Extended lookup with normalized keys (apostrophes + hyphens)
+    lookup = _build_move_fr_lookup(move_fr_map)
+
     with conn.cursor() as cur:
         loaded = skipped = 0
         for record in movesets:
-            move_id = move_fr_map.get(record["move_name_fr"].lower())
+            raw      = record["move_name_fr"]
+            move_id  = lookup.get(raw.lower()) or lookup.get(_normalize_move_name(raw))
             if not move_id:
                 skipped += 1
                 continue
@@ -498,7 +481,6 @@ def main() -> None:
         "data/moves_if.json":        "extract_moves_if.py",
         "data/tms_if.json":          "extract_moves_if.py",
         "data/abilities_if.json":    "extract_abilities_if.py",
-        "data/locations_if.json":    "extract_locations_if.py",
         "data/movesets_merged.json": "transform_merge_movesets.py",
         "data/evolutions_base.json": "extract_stats_pokeapi.py",
     }
@@ -511,26 +493,30 @@ def main() -> None:
     moves        = json.loads(Path("data/moves_if.json").read_text())
     tms          = json.loads(Path("data/tms_if.json").read_text())
     abilities    = json.loads(Path("data/abilities_if.json").read_text())
-    locations    = json.loads(Path("data/locations_if.json").read_text())
     movesets     = json.loads(Path("data/movesets_merged.json").read_text())
     evolutions   = json.loads(Path("data/evolutions_base.json").read_text())
 
     LOGGER.info("Connecting to PostgreSQL...")
     conn = get_pg_connection()
 
-    gen_map     = load_generations(conn)
-    type_map    = load_types(conn, moves)
-    ability_map = load_abilities(conn, abilities)
-    move_map    = load_moves(conn, moves, type_map)
-    load_tms(conn, tms, move_map)
-    load_pokemon(conn, pokedex, stats, gen_map)
-    load_pokemon_types(conn, pokedex, type_map)
-    load_pokemon_abilities(conn, abilities, ability_map)
-    load_evolutions(conn, evolutions)
-    load_locations(conn, locations)
-    load_movesets(conn, movesets, move_map)
+    try:
+        gen_map     = load_generations(conn)
+        type_map    = load_types(conn, moves)
+        ability_map = load_abilities(conn, abilities)
+        move_map    = load_moves(conn, moves, type_map)
+        load_tms(conn, tms, move_map)
+        load_pokemon(conn, pokedex, stats, gen_map)
+        load_pokemon_types(conn, pokedex, type_map)
+        load_pokemon_abilities(conn, abilities, ability_map)
+        load_evolutions(conn, evolutions)
+        load_movesets(conn, movesets, move_map)
+    except Exception:
+        conn.rollback()
+        LOGGER.exception("ETL failed — rolling back")
+        raise
+    finally:
+        conn.close()
 
-    conn.close()
     LOGGER.info("All data loaded successfully.")
 
 

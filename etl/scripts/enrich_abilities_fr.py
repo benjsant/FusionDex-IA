@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
@@ -23,6 +25,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 POKEAPI      = "https://pokeapi.co/api/v2/ability/{slug}"
 DATA_FILE    = Path("data/abilities_if.json")
 SAVE_EVERY   = 50
+MAX_WORKERS  = 4
 VERSION_PRIO = ["ultra-sun-ultra-moon", "sun-moon", "omega-ruby-alpha-sapphire", "x-y"]
 
 # Manual slug overrides for cases where IF wiki name differs from PokeAPI slug
@@ -64,6 +67,14 @@ def fetch_ability_fr(slug: str) -> tuple[str | None, str | None]:
     return name_fr, desc_fr
 
 
+def _enrich_one(ability: dict) -> tuple[dict, str | None, str | None]:
+    name_en = ability["name_en"]
+    slug    = MANUAL_SLUGS.get(name_en, slugify(name_en))
+    name_fr, desc_fr = fetch_ability_fr(slug)
+    time.sleep(0.05)
+    return ability, name_fr, desc_fr
+
+
 def main() -> None:
     abilities: list[dict] = json.loads(DATA_FILE.read_text())
 
@@ -72,28 +83,30 @@ def main() -> None:
 
     found = 0
     not_found: list[str] = []
+    lock  = threading.Lock()
+    done  = 0
 
-    for i, ability in enumerate(to_enrich, 1):
-        name_en = ability["name_en"]
-        slug    = MANUAL_SLUGS.get(name_en, slugify(name_en))
+    def save() -> None:
+        DATA_FILE.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
 
-        name_fr, desc_fr = fetch_ability_fr(slug)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_enrich_one, a): a for a in to_enrich}
+        for future in as_completed(futures):
+            ability, name_fr, desc_fr = future.result()
+            with lock:
+                done += 1
+                if name_fr:
+                    ability["name_fr"]        = name_fr
+                    ability["description_fr"] = desc_fr
+                    found += 1
+                else:
+                    not_found.append(ability["name_en"])
+                    LOGGER.warning("[NOT FOUND] %s", ability["name_en"])
+                if done % SAVE_EVERY == 0:
+                    save()
+                    LOGGER.info("[%d/%d] %d trouvés, %d non trouvés", done, len(to_enrich), found, len(not_found))
 
-        if name_fr:
-            ability["name_fr"]        = name_fr
-            ability["description_fr"] = desc_fr
-            found += 1
-        else:
-            not_found.append(name_en)
-            LOGGER.warning("[NOT FOUND] %s (slug: %s)", name_en, slug)
-
-        if i % SAVE_EVERY == 0:
-            DATA_FILE.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
-            LOGGER.info("[%d/%d] %d trouvés, %d non trouvés", i, len(to_enrich), found, len(not_found))
-
-        time.sleep(0.3)
-
-    DATA_FILE.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
+    save()
     LOGGER.info("Terminé — %d FR trouvés | %d non trouvés", found, len(not_found))
     if not_found:
         LOGGER.warning("Non trouvés: %s", not_found)

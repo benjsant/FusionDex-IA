@@ -31,22 +31,77 @@ from pathlib import Path
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-IN_MOVESETS = Path("data/movesets_base.json")
-IN_TMS      = Path("data/tms_if.json")
-IN_TUTORS   = Path("data/tutors_if.json")
-IN_MOVES    = Path("data/moves_if.json")
-OUTPUT      = Path("data/movesets_merged.json")
+IN_MOVESETS       = Path("data/movesets_base.json")
+IN_TMS            = Path("data/tms_if.json")
+IN_TUTORS         = Path("data/tutors_if.json")
+IN_EXPERT_TUTORS  = Path("data/expert_tutors_if.json")
+IN_MOVES          = Path("data/moves_if.json")
+OUTPUT            = Path("data/movesets_merged.json")
+
+
+# Pokepedia uses old-generation FR names that PokeAPI renamed in Gen 6-7.
+# Maps Pokepedia name → canonical PokeAPI name_fr stored in moves_if.json.
+# Also filters artefact strings that aren't move names at all.
+POKEPEDIA_ALIASES: dict[str, str | None] = {
+    # Old name             → PokeAPI canonical name_fr (None = discard)
+    "Poing de Feu":         "Poing Feu",
+    "Hydroqueue":           "Hydro-Queue",
+    "Dracochoc":            "Draco-Charge",
+    "Tourmagik":            "Zone Magique",
+    "Bomb-Beurk":           "Bombe Beurk",
+    "Fléau":                "Châtiment",
+    "Vampipoing":           "Vampi-Poing",
+    "Aile d'Acier":         "Ailes d'Acier",
+    "Vol-Vie":              "Vampirisme",
+    "Dracogriffe":          "Draco-Griffe",
+    "Dracosouffle":         "Draco-Souffle",
+    "Danse Flamme":         "Danse Flammes",
+    "Dracocharge":          "Draco-Charge",
+    "Cru-Aile":             "Cru-Ailes",
+    "Dynamopoing":          "Dynamo-Poing",
+    "Danse-Plume":          "Danse Plumes",   # Feather Dance — manquait le 's'
+    "Danse Plume":          "Danse Plumes",   # variante sans tiret
+    "Danse-Fleur":          "Danse Fleurs",   # Petal Dance — manquait le 's'
+    "Danse Fleur":          "Danse Fleurs",   # variante sans tiret
+    "Force Cosmik":         "Force Cosmique",
+    "Prélèvem. Destin":     "Lien du Destin", # Destiny Bond (abréviation Pokepedia)
+    "Prélèvement Destin":   "Lien du Destin", # Destiny Bond (vieux nom Gen 1/2)
+    "Sonicboom":            "Sonic Boom",     # orthographe sans espace
+    "Sonik-Boom":           "Sonic Boom",     # orthographe Pokepedia
+    "Stalagtite":           "Stalactite",
+    "Coquilame":            "Coqui-Lame",     # Razor Shell
+    "Coquilames":           "Coqui-Lame",     # variante pluriel
+    "Carnareket":           "Psycho-Croc",    # Psychic Fangs (Jirachi)
+    "Crocs Suprêmes":       "Psycho-Croc",    # vieux nom Pokepedia
+    "DélugePlasmique":      "Déluge Plasmique",
+    "Lumiqueue":            "Lumi-Queue",     # Tail Glow
+    "Lumik-Queue":          "Lumi-Queue",     # variante orthographe
+    "Bombaimant":           "Bombe Aimant",   # Magnet Bomb
+    "Bomb-Aimant":          "Bombe Aimant",   # variante avec tiret
+    "Bomb'Œuf":             "Bombe Œuf",      # Egg Bomb (apostrophe → espace)
+    "Vol-Force":            "Vole-Force",     # Strength Sap (was wrongly mapped to "Force-Vol")
+    "Végé-Attak":           "Végé-Attaque",
+    # Artefacts — not move names, discard
+    "Ce Pokémon n'apprend aucune capacité par reproduction lors de cette génération.": None,
+    "Grâce à sa capacité":  None,
+}
 
 
 def normalize(name: str) -> str:
     """Normalize move name for fuzzy matching."""
     return (
         name.lower()
-        .replace("'", "'")
-        .replace("'", "'")
+        .replace("\u2019", "'").replace("\u2018", "'")
         .replace("-", " ")
         .strip()
     )
+
+
+def apply_alias(name: str) -> str | None:
+    """Apply Pokepedia→PokeAPI alias if known. Returns None for artefacts."""
+    if name in POKEPEDIA_ALIASES:
+        return POKEPEDIA_ALIASES[name]
+    return name
 
 
 def build_name_fr_to_en(moves: list[dict]) -> dict[str, str]:
@@ -72,10 +127,11 @@ def main() -> None:
         if not f.exists():
             raise FileNotFoundError(f"{f} not found — run prior ETL steps first")
 
-    base_movesets : list[dict] = json.loads(IN_MOVESETS.read_text())
-    tms_if        : list[dict] = json.loads(IN_TMS.read_text())
-    tutors_if     : list[dict] = json.loads(IN_TUTORS.read_text())
-    moves_if      : list[dict] = json.loads(IN_MOVES.read_text())
+    base_movesets  : list[dict] = json.loads(IN_MOVESETS.read_text())
+    tms_if         : list[dict] = json.loads(IN_TMS.read_text())
+    tutors_if      : list[dict] = json.loads(IN_TUTORS.read_text())
+    expert_tutors  : list[dict] = json.loads(IN_EXPERT_TUTORS.read_text()) if IN_EXPERT_TUTORS.exists() else []
+    moves_if       : list[dict] = json.loads(IN_MOVES.read_text())
 
     en_to_fr = build_name_en_to_fr(moves_if)
     fr_to_en = build_name_fr_to_en(moves_if)
@@ -84,10 +140,22 @@ def main() -> None:
     base_index: set[tuple[int, str, str]] = set()
     merged: list[dict] = []
 
+    aliased = 0
+    discarded = 0
     for record in base_movesets:
+        canonical = apply_alias(record["move_name_fr"])
+        if canonical is None:
+            discarded += 1
+            continue
+        if canonical != record["move_name_fr"]:
+            record = {**record, "move_name_fr": canonical}
+            aliased += 1
         key = (record["pokemon_if_id"], normalize(record["move_name_fr"]), record["method"])
         base_index.add(key)
         merged.append(record)
+
+    if aliased or discarded:
+        LOGGER.info("Aliases applied: %d renamed, %d discarded", aliased, discarded)
 
     # ── TMs IF — add CT rows not already present ──────────────────────────────
     # tms_if entries have move_name in EN; we convert to FR for consistency
@@ -127,6 +195,15 @@ def main() -> None:
             if_tutor_names_fr.add(normalize(name_fr))
 
     LOGGER.info("IF Tutors mapped to FR names: %d", len(if_tutor_names_fr))
+
+    # ── Expert Tutors IF — Move Expert moves (Knot/Boon Island) ──────────────
+    if_expert_names_fr: set[str] = set()
+    for expert in expert_tutors:
+        name_fr = en_to_fr.get(normalize(expert["move_name"]))
+        if name_fr:
+            if_expert_names_fr.add(normalize(name_fr))
+
+    LOGGER.info("IF Expert Tutors mapped to FR names: %d", len(if_expert_names_fr))
 
     # ── Flag existing base records that are also IF TMs or tutors ────────────
     # Update source for moves that are ALSO available via IF-specific methods
@@ -170,6 +247,20 @@ def main() -> None:
             tutor_key = (if_id, norm, "tutor")
             if tutor_key not in base_index:
                 base_index.add(tutor_key)
+                merged.append({
+                    "pokemon_if_id": if_id,
+                    "move_name_fr":  record["move_name_fr"],
+                    "method":        "tutor",
+                    "level":         None,
+                    "source":        "infinite_fusion",
+                })
+                override_count += 1
+
+        # Same for expert tutors (Move Expert — Heart Scales)
+        if norm in if_expert_names_fr:
+            expert_key = (if_id, norm, "tutor")
+            if expert_key not in base_index:
+                base_index.add(expert_key)
                 merged.append({
                     "pokemon_if_id": if_id,
                     "move_name_fr":  record["move_name_fr"],
