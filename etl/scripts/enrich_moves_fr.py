@@ -31,7 +31,11 @@ MAX_WORKERS   = 4
 REQUEST_DELAY = 0.05   # secondes par worker
 
 # Priorité de version pour la description FR — on prend la plus récente disponible
-VERSION_PRIO = ["ultra-sun-ultra-moon", "sun-moon", "omega-ruby-alpha-sapphire", "x-y", "black-2-white-2", "black-white"]
+VERSION_PRIO = [
+    "ultra-sun-ultra-moon", "sun-moon", "omega-ruby-alpha-sapphire", "x-y",
+    "black-2-white-2", "black-white",
+    "lets-go-pikachu-lets-go-eevee", "sword-shield",  # fallback Gen 8+ moves
+]
 
 # Corrections manuelles : nom IF wiki → slug PokeAPI exact
 MANUAL_SLUGS: dict[str, str] = {
@@ -108,7 +112,7 @@ def main() -> None:
         raise FileNotFoundError("data/moves_if.json not found — run extract_moves_if.py first")
 
     moves = json.loads(MOVES_FILE.read_text())
-    to_enrich = [m for m in moves if not m.get("name_fr")]
+    to_enrich = [m for m in moves if not m.get("name_fr") or not m.get("description_fr")]
     LOGGER.info("%d moves à enrichir en FR (sur %d)", len(to_enrich), len(moves))
 
     found = not_found = 0

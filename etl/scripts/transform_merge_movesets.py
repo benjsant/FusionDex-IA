@@ -58,19 +58,27 @@ POKEPEDIA_ALIASES: dict[str, str | None] = {
     "Dracocharge":          "Draco-Charge",
     "Cru-Aile":             "Cru-Ailes",
     "Dynamopoing":          "Dynamo-Poing",
-    "Danse-Plume":          "Danse Plume",
-    "Danse-Fleur":          "Danse Fleur",
+    "Danse-Plume":          "Danse Plumes",   # Feather Dance — manquait le 's'
+    "Danse Plume":          "Danse Plumes",   # variante sans tiret
+    "Danse-Fleur":          "Danse Fleurs",   # Petal Dance — manquait le 's'
+    "Danse Fleur":          "Danse Fleurs",   # variante sans tiret
     "Force Cosmik":         "Force Cosmique",
-    "Prélèvem. Destin":     "Prélèvement Destin",
-    "Sonicboom":            "Sonik-Boom",
+    "Prélèvem. Destin":     "Lien du Destin", # Destiny Bond (abréviation Pokepedia)
+    "Prélèvement Destin":   "Lien du Destin", # Destiny Bond (vieux nom Gen 1/2)
+    "Sonicboom":            "Sonic Boom",     # orthographe sans espace
+    "Sonik-Boom":           "Sonic Boom",     # orthographe Pokepedia
     "Stalagtite":           "Stalactite",
-    "Coquilame":            "Coquilames",
-    "Carnareket":           "Crocs Suprêmes",
+    "Coquilame":            "Coqui-Lame",     # Razor Shell
+    "Coquilames":           "Coqui-Lame",     # variante pluriel
+    "Carnareket":           "Psycho-Croc",    # Psychic Fangs (Jirachi)
+    "Crocs Suprêmes":       "Psycho-Croc",    # vieux nom Pokepedia
     "DélugePlasmique":      "Déluge Plasmique",
-    "Lumiqueue":            "Lumik-Queue",
-    "Bombaimant":           "Bomb-Aimant",
-    "Bomb'Œuf":             "Bomb'Œuf",
-    "Vol-Force":            "Force-Vol",
+    "Lumiqueue":            "Lumi-Queue",     # Tail Glow
+    "Lumik-Queue":          "Lumi-Queue",     # variante orthographe
+    "Bombaimant":           "Bombe Aimant",   # Magnet Bomb
+    "Bomb-Aimant":          "Bombe Aimant",   # variante avec tiret
+    "Bomb'Œuf":             "Bombe Œuf",      # Egg Bomb (apostrophe → espace)
+    "Vol-Force":            "Vole-Force",     # Strength Sap (was wrongly mapped to "Force-Vol")
     "Végé-Attak":           "Végé-Attaque",
     # Artefacts — not move names, discard
     "Ce Pokémon n'apprend aucune capacité par reproduction lors de cette génération.": None,
