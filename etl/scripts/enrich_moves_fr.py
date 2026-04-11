@@ -14,14 +14,14 @@ Output: data/moves_if.json (modifié in-place avec name_fr)
 from __future__ import annotations
 
 import json
-
-from etl.utils.logging import setup_logging
-import threading
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import requests
+from etl.utils.logging import setup_logging
+from etl.utils.pokeapi import (
+    enrich_items_parallel,
+    fetch_fr_translation,
+    sleep_between_requests,
+)
 
 LOGGER = setup_logging(__name__)
 
@@ -69,41 +69,12 @@ def to_slug(name_en: str) -> str:
     return name_en.lower().replace(" ", "-").replace("'", "").replace(".", "")
 
 
-def fetch_fr_data(slug: str) -> tuple[str | None, str | None]:
-    """Returns (name_fr, description_fr) — one description max, most recent version."""
-    try:
-        resp = requests.get(POKEAPI_MOVE.format(slug), timeout=10)
-        if resp.status_code != 200:
-            return None, None
-        data = resp.json()
-    except Exception as e:
-        LOGGER.debug("PokeAPI error '%s': %s", slug, e)
-        return None, None
-
-    name_fr = next(
-        (e["name"] for e in data.get("names", []) if e["language"]["name"] == "fr"),
-        None,
-    )
-
-    desc_fr = None
-    for vg in VERSION_PRIO:
-        desc_fr = next(
-            (e["flavor_text"] for e in data.get("flavor_text_entries", [])
-             if e["language"]["name"] == "fr" and e["version_group"]["name"] == vg),
-            None,
-        )
-        if desc_fr:
-            desc_fr = desc_fr.replace("\n", " ").replace("\xa0", " ")
-            break
-
-    return name_fr, desc_fr
-
-
 def _enrich_one(move: dict) -> tuple[dict, str | None, str | None]:
-    """Fetch FR name + description for one move."""
     slug = to_slug(move["name_en"])
-    name_fr, desc_fr = fetch_fr_data(slug)
-    time.sleep(REQUEST_DELAY)
+    name_fr, desc_fr = fetch_fr_translation(
+        POKEAPI_MOVE.format(slug), VERSION_PRIO, logger=LOGGER,
+    )
+    sleep_between_requests(REQUEST_DELAY)
     return move, name_fr, desc_fr
 
 
@@ -115,32 +86,20 @@ def main() -> None:
     to_enrich = [m for m in moves if not m.get("name_fr") or not m.get("description_fr")]
     LOGGER.info("%d moves à enrichir en FR (sur %d)", len(to_enrich), len(moves))
 
-    found = not_found = 0
-    lock  = threading.Lock()
-    done  = 0
-
     def save() -> None:
         MOVES_FILE.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_enrich_one, m): m for m in to_enrich}
-        for future in as_completed(futures):
-            move, name_fr, desc_fr = future.result()
-            with lock:
-                done += 1
-                if name_fr:
-                    move["name_fr"]        = name_fr
-                    move["description_fr"] = desc_fr
-                    found += 1
-                else:
-                    LOGGER.debug("FR not found: '%s'", move["name_en"])
-                    not_found += 1
-                if done % 100 == 0:
-                    save()
-                    LOGGER.info("[%d/%d] %d trouvés, %d non trouvés", done, len(to_enrich), found, not_found)
+    found, not_found = enrich_items_parallel(
+        to_enrich,
+        _enrich_one,
+        save=save,
+        logger=LOGGER,
+        save_every=100,
+        max_workers=MAX_WORKERS,
+        label="moves",
+    )
 
-    save()
-    LOGGER.info("Terminé — %d FR trouvés | %d non trouvés", found, not_found)
+    LOGGER.info("Terminé — %d FR trouvés | %d non trouvés", found, len(not_found))
 
     missing = [m["name_en"] for m in moves if not m.get("name_fr")]
     if missing:
