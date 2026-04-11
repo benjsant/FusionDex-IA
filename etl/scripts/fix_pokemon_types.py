@@ -10,17 +10,14 @@ Idempotent : ON CONFLICT (pokemon_id, slot) DO UPDATE.
 
 from __future__ import annotations
 
-import json
-import logging
-import os
 import time
-from pathlib import Path
 
-import psycopg2
 import requests
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
+
+LOGGER = setup_logging(__name__)
 
 POKEAPI = "https://pokeapi.co/api/v2/pokemon/{}"
 REQUEST_DELAY = 0.15  # secondes entre requêtes
@@ -28,16 +25,6 @@ REQUEST_DELAY = 0.15  # secondes entre requêtes
 # Pokémon IF sans équivalent PokeAPI (formes IF custom, triple fusions, etc.)
 # On les laisse avec les types du wiki IF
 SKIP_NATIONAL_IDS: set[int] = set()
-
-
-def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "db"),
-        port=int(os.getenv("POSTGRES_PORT", "5432")),
-        dbname=os.getenv("POSTGRES_DB", "fusiondex_db"),
-        user=os.getenv("POSTGRES_USER", "fusiondex_user"),
-        password=os.getenv("POSTGRES_PASSWORD", "fusiondex_password"),
-    )
 
 
 def fetch_types(national_id: int) -> list[tuple[int, str]]:
@@ -56,9 +43,8 @@ def fetch_types(national_id: int) -> list[tuple[int, str]]:
         return []
 
 
-def main() -> None:
-    conn = get_connection()
-    cur  = conn.cursor()
+def fix_pokemon_types(conn) -> None:
+    cur = conn.cursor()
 
     # Récupère la liste des Pokémon avec leur national_id
     cur.execute("SELECT id, national_id FROM pokemon WHERE national_id IS NOT NULL ORDER BY id")
@@ -121,11 +107,15 @@ def main() -> None:
     LOGGER.info("%d Pokémon IF-only sans types en base", len(if_only))
 
     cur.close()
-    conn.close()
     LOGGER.info(
         "Terminé — %d mis à jour | %d ignorés | %d erreurs",
         updated, skipped, errors
     )
+
+
+def main() -> None:
+    with pg_connection() as conn:
+        fix_pokemon_types(conn)
 
 
 if __name__ == "__main__":

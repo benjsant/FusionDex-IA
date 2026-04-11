@@ -31,16 +31,16 @@ Sources:
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 
 import psycopg2
 from psycopg2.extras import execute_values
 
-from etl.utils.db import get_pg_connection
+from etl.utils.db import pg_connection
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+from etl.utils.logging import setup_logging
+
+LOGGER = setup_logging(__name__)
 
 # IF overrides for evolution methods (from Differences_with_the_official_games wiki page)
 # Format: (from_name_en, into_name_en): [(trigger, min_level, item_en, if_notes)]
@@ -165,24 +165,21 @@ def load_generations(conn) -> dict[int, int]:
 
 
 def load_types(conn, moves: list[dict]) -> dict[str, int]:
-    """Seed type table from move data. Returns {name_en_lower: db_id}."""
+    """Seed type table from move data. Returns {name_en_lower: db_id}.
+
+    Note: the 8 unique IF triple-fusion types (Ice/Fire/Electric, …) are
+    seeded separately by ``load_triple_fusions.py`` with
+    ``is_triple_fusion_type=true`` and FR names.
+    """
     # Capitalize to match the canonical form inserted by seed_type_effectiveness
     type_names_en = {m["type_en"].capitalize() for m in moves if m.get("type_en")}
 
-    # The 9 triple-fusion types — added manually since not in List of Moves
-    TRIPLE_FUSION_TYPES = {
-        "Ice/fire/electric", "Fire/water/electric", "Water/ground/flying",
-        "Dragon/ghost/steel", "Ice/fire/electric/dragon", "Psychic/grass/steel",
-        "Psychic/steel/bug", "Ice/rock/steel", "Fire/water/grass",
-    }
-
     with conn.cursor() as cur:
         for name in sorted(type_names_en):
-            is_tf = name in TRIPLE_FUSION_TYPES
             cur.execute(
-                "INSERT INTO type (name_en, is_triple_fusion_type) VALUES (%s, %s) "
+                "INSERT INTO type (name_en) VALUES (%s) "
                 "ON CONFLICT (name_en) DO NOTHING",
-                (name, is_tf),
+                (name,),
             )
         conn.commit()
         cur.execute("SELECT id, name_en FROM type")
@@ -412,8 +409,6 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
     LOGGER.info("Loaded evolutions")
 
 
-
-
 def _normalize_move_name(name: str) -> str:
     """Normalize FR move name for fuzzy lookup.
 
@@ -499,9 +494,7 @@ def main() -> None:
     evolutions   = json.loads(Path("data/evolutions_base.json").read_text())
 
     LOGGER.info("Connecting to PostgreSQL...")
-    conn = get_pg_connection()
-
-    try:
+    with pg_connection() as conn:
         gen_map     = load_generations(conn)
         type_map    = load_types(conn, moves)
         ability_map = load_abilities(conn, abilities)
@@ -512,12 +505,6 @@ def main() -> None:
         load_pokemon_abilities(conn, abilities, ability_map)
         load_evolutions(conn, evolutions)
         load_movesets(conn, movesets, move_map)
-    except Exception:
-        conn.rollback()
-        LOGGER.exception("ETL failed — rolling back")
-        raise
-    finally:
-        conn.close()
 
     LOGGER.info("All data loaded successfully.")
 

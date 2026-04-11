@@ -12,16 +12,15 @@ Name→ID resolution:
 from __future__ import annotations
 
 import json
-import logging
 import re
 from pathlib import Path
 
 import psycopg2
 
-from etl.utils.db import get_pg_connection as get_connection
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
 
-LOGGER    = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 DATA_FILE = Path("data/encounters_if.json")
 
@@ -124,15 +123,8 @@ def load_encounters(conn) -> None:
 
 def main() -> None:
     LOGGER.info("Connecting to PostgreSQL...")
-    conn = get_connection()
-    try:
+    with pg_connection() as conn:
         load_encounters(conn)
-    except Exception:
-        conn.rollback()
-        LOGGER.exception("load_encounters failed — rolling back")
-        raise
-    finally:
-        conn.close()
 
 
 if __name__ == "__main__":

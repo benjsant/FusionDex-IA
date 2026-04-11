@@ -12,15 +12,13 @@ Idempotent : ON CONFLICT DO NOTHING / DO UPDATE SET name_fr.
 from __future__ import annotations
 
 import csv
-import logging
-import os
 from decimal import Decimal
 from pathlib import Path
 
-import psycopg2
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 CSV_PATH = Path(__file__).parent / "data" / "table_type.csv"
 
@@ -45,16 +43,6 @@ FR_TO_EN: dict[str, str] = {
     "Acier":    "Steel",
     "Fée":      "Fairy",
 }
-
-
-def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "db"),
-        port=int(os.getenv("POSTGRES_PORT", "5432")),
-        dbname=os.getenv("POSTGRES_DB", "fusiondex_db"),
-        user=os.getenv("POSTGRES_USER", "fusiondex_user"),
-        password=os.getenv("POSTGRES_PASSWORD", "fusiondex_password"),
-    )
 
 
 def seed_types(cur) -> dict[str, int]:
@@ -136,15 +124,12 @@ def seed_effectiveness(cur, type_map: dict[str, int]) -> None:
 
 
 def main() -> None:
-    conn = get_connection()
-    cur  = conn.cursor()
-
-    type_map = seed_types(cur)
-    seed_effectiveness(cur, type_map)
-
-    conn.commit()
-    cur.close()
-    conn.close()
+    with pg_connection() as conn:
+        cur = conn.cursor()
+        type_map = seed_types(cur)
+        seed_effectiveness(cur, type_map)
+        conn.commit()
+        cur.close()
     LOGGER.info("Terminé.")
 
 

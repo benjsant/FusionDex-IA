@@ -31,16 +31,15 @@ Target tables :
 from __future__ import annotations
 
 import csv
-import logging
 import re
 from pathlib import Path
 
 import psycopg2.extras
 
-from etl.utils.db import get_pg_connection as get_connection
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 CSV_FILE = Path("data/sprite_credits.csv")
 
@@ -195,15 +194,8 @@ def load_sprite_credits(conn) -> None:
 
 def main() -> None:
     LOGGER.info("Connecting to PostgreSQL...")
-    conn = get_connection()
-    try:
+    with pg_connection() as conn:
         load_sprite_credits(conn)
-    except Exception:
-        conn.rollback()
-        LOGGER.exception("load_sprite_credits failed — rolling back")
-        raise
-    finally:
-        conn.close()
 
 
 if __name__ == "__main__":

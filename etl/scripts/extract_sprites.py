@@ -22,7 +22,8 @@ from __future__ import annotations
 
 import io
 import json
-import logging
+
+from etl.utils.logging import setup_logging
 import re
 import sys
 import time
@@ -32,8 +33,7 @@ from pathlib import Path
 import requests
 from PIL import Image
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR       = Path(__file__).resolve().parents[2] / "data"

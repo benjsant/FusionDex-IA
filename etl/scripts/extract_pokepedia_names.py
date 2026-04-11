@@ -14,7 +14,8 @@ Output: data/pokepedia_names.json
 from __future__ import annotations
 
 import json
-import logging
+
+from etl.utils.logging import setup_logging
 import re
 from pathlib import Path
 from urllib.parse import unquote
@@ -22,8 +23,7 @@ from urllib.parse import unquote
 import requests
 from lxml import html
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 LIST_URL = (
     "https://www.pokepedia.fr/"

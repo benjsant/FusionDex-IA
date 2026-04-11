@@ -14,7 +14,8 @@ Output: data/moves_if.json (modifié in-place avec name_fr)
 from __future__ import annotations
 
 import json
-import logging
+
+from etl.utils.logging import setup_logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,8 +23,7 @@ from pathlib import Path
 
 import requests
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 POKEAPI_MOVE  = "https://pokeapi.co/api/v2/move/{}"
 MOVES_FILE    = Path("data/moves_if.json")

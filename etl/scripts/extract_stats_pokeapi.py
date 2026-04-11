@@ -18,15 +18,15 @@ Output: data/pokemon_stats.json, data/evolutions_base.json
 from __future__ import annotations
 
 import json
-import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from etl.utils.http import get_json
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+from etl.utils.logging import setup_logging
+
+LOGGER = setup_logging(__name__)
 
 POKEAPI_BASE    = "https://pokeapi.co/api/v2"
 INPUT_FILE      = Path("data/pokedex_if.json")

@@ -25,11 +25,11 @@ Output:
 from __future__ import annotations
 
 import json
-import logging
+
+from etl.utils.logging import setup_logging
 from pathlib import Path
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 IN_MOVESETS       = Path("data/movesets_base.json")
 IN_TMS            = Path("data/tms_if.json")

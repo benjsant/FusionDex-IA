@@ -11,7 +11,8 @@ Version priority for description: ultra-sun-ultra-moon > sun-moon > omega-ruby-a
 from __future__ import annotations
 
 import json
-import logging
+
+from etl.utils.logging import setup_logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,8 +20,7 @@ from pathlib import Path
 
 import requests
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 POKEAPI      = "https://pokeapi.co/api/v2/ability/{slug}"
 DATA_FILE    = Path("data/abilities_if.json")
