@@ -276,9 +276,10 @@ def load_pokemon(conn, pokedex: list[dict], stats: list[dict], gen_map: dict) ->
                 """INSERT INTO pokemon
                    (id, national_id, name_en, name_fr, generation_id,
                     hp, attack, defense, sp_attack, sp_defense, speed,
-                    base_experience, is_hoenn_only)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                   ON CONFLICT (id) DO NOTHING""",
+                    base_experience, is_hoenn_only, sprite_path)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (id) DO UPDATE SET
+                       sprite_path = EXCLUDED.sprite_path""",
                 (
                     if_id,
                     s.get("national_id"),
@@ -293,6 +294,7 @@ def load_pokemon(conn, pokedex: list[dict], stats: list[dict], gen_map: dict) ->
                     s.get("speed", 1),
                     s.get("base_experience"),
                     entry.get("is_hoenn_only", False),
+                    f"{if_id}.{if_id}.png",
                 ),
             )
         conn.commit()

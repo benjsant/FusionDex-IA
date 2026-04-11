@@ -17,8 +17,12 @@ Steps:
   8b. fix_pokemon_types        — fix Pokémon types from PokeAPI (overrides wiki data)
   9.  seed_type_effectiveness  — 18×18 type chart with FR names from table_type.csv
   9b. load_encounters          — load locations + pokemon_location from encounters_if.json
-  10. extract_sprites          — download spritesheets from infinitefusion.net
-                                  crop 96×96 cells → data/sprites/{h}.{b}.png
+  10.  extract_sprites          — download spritesheets from infinitefusion.net
+                                   crop 96×96 cells → data/sprites/{h}.{b}.png
+  11a. extract_triple_fusions   — 23 post-game triple fusions from IF wiki
+  11b. load_triple_fusions      — triple_fusion + components + types + abilities
+  12.  load_sprite_credits      — 7k creators + 166k fusion_sprite + 172k joins
+                                   from data/sprite_credits.csv
 
 Usage:
   python etl/pipeline.py          # skip if data already loaded
@@ -56,10 +60,13 @@ def check_already_loaded() -> bool:
       - pokemon_move ≥ 30000 (≈40 000 expected)
     """
     THRESHOLDS = {
-        "pokemon":      500,
-        "move":         600,
-        "ability":      150,
-        "pokemon_move": 30_000,
+        "pokemon":       500,
+        "move":          600,
+        "ability":       150,
+        "pokemon_move":  30_000,
+        "fusion_sprite": 100_000,
+        "creator":       5_000,
+        "triple_fusion": 20,
     }
     try:
         import psycopg2  # noqa: PLC0415
@@ -190,7 +197,25 @@ def main(force: bool = False) -> None:
     # Step 10 — Download & extract fusion sprites from infinitefusion.net
     run(
         ["python", str(SCRIPTS_DIR / "extract_sprites.py")],
-        "Step 10/10 — Download spritesheets & extract sprites (infinitefusion.net)",
+        "Step 10/12 — Download spritesheets & extract sprites (infinitefusion.net)",
+    )
+
+    # Step 11a — Extract triple fusions from IF wiki
+    run(
+        ["python", str(SCRIPTS_DIR / "extract_triple_fusions.py")],
+        "Step 11a/12 — Extract triple fusions from IF wiki (23 entries)",
+    )
+
+    # Step 11b — Load triple fusions (+ components + types + abilities)
+    run(
+        ["python", str(SCRIPTS_DIR / "load_triple_fusions.py")],
+        "Step 11b/12 — Load triple_fusion + components + types + abilities",
+    )
+
+    # Step 12 — Load sprite credits (creator + fusion_sprite + fusion_sprite_creator)
+    run(
+        ["python", str(SCRIPTS_DIR / "load_sprite_credits.py")],
+        "Step 12/12 — Load sprite credits from data/sprite_credits.csv",
     )
 
     print("\n[ETL] Pipeline completed successfully.", flush=True)
