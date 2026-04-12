@@ -1,0 +1,231 @@
+[
+  {
+    "from": "golbat", "into": "crobat",
+    "conditions": [{"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 (no friendship)"}]
+  },
+  {
+    "from": "poliwhirl", "into": "politoed",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 37, "item": null, "notes": "Level 37 OR King's Rock"},
+      {"trigger": "use_item", "min_level": null, "item": "kings-rock", "notes": "King's Rock"}
+    ]
+  },
+  {
+    "from": "kadabra", "into": "alakazam",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Linking Cord"},
+      {"trigger": "use_item", "min_level": null, "item": "linking-cord", "notes": "Linking Cord"}
+    ]
+  },
+  {
+    "from": "machoke", "into": "machamp",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Linking Cord"},
+      {"trigger": "use_item", "min_level": null, "item": "linking-cord", "notes": "Linking Cord"}
+    ]
+  },
+  {
+    "from": "graveler", "into": "golem",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Linking Cord"},
+      {"trigger": "use_item", "min_level": null, "item": "linking-cord", "notes": "Linking Cord"}
+    ]
+  },
+  {
+    "from": "slowpoke", "into": "slowking",
+    "conditions": [
+      {"trigger": "use_item", "min_level": null, "item": "water-stone", "notes": "Water Stone OR King's Rock"},
+      {"trigger": "use_item", "min_level": null, "item": "kings-rock", "notes": "King's Rock"}
+    ]
+  },
+  {
+    "from": "magneton", "into": "magnezone",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "magnet-stone", "notes": "Magnet Stone (IF-specific)"}]
+  },
+  {
+    "from": "haunter", "into": "gengar",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Linking Cord"},
+      {"trigger": "use_item", "min_level": null, "item": "linking-cord", "notes": "Linking Cord"}
+    ]
+  },
+  {
+    "from": "onix", "into": "steelix",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Metal Coat"},
+      {"trigger": "use_item", "min_level": null, "item": "metal-coat", "notes": "Metal Coat"}
+    ]
+  },
+  {
+    "from": "rhydon", "into": "rhyperior",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 55, "item": null, "notes": "Level 55 OR Protector"},
+      {"trigger": "use_item", "min_level": null, "item": "protector", "notes": "Protector"}
+    ]
+  },
+  {
+    "from": "chansey", "into": "blissey",
+    "conditions": [{"trigger": "level_up", "min_level": 42, "item": null, "notes": "Level 42 (no friendship)"}]
+  },
+  {
+    "from": "scyther", "into": "scizor",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Metal Coat"},
+      {"trigger": "use_item", "min_level": null, "item": "metal-coat", "notes": "Metal Coat"}
+    ]
+  },
+  {
+    "from": "seadra", "into": "kingdra",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 50, "item": null, "notes": "Level 50 OR Dragon Scale"},
+      {"trigger": "use_item", "min_level": null, "item": "dragon-scale", "notes": "Dragon Scale"}
+    ]
+  },
+  {
+    "from": "electabuzz", "into": "electivire",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 50, "item": null, "notes": "Level 50 OR Electirizer"},
+      {"trigger": "use_item", "min_level": null, "item": "electirizer", "notes": "Electirizer"}
+    ]
+  },
+  {
+    "from": "magmar", "into": "magmortar",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 50, "item": null, "notes": "Level 50 OR Magmarizer"},
+      {"trigger": "use_item", "min_level": null, "item": "magmarizer", "notes": "Magmarizer"}
+    ]
+  },
+  {
+    "from": "eevee", "into": "espeon",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "sun-stone", "notes": "Sun Stone (no daytime/friendship)"}]
+  },
+  {
+    "from": "eevee", "into": "umbreon",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "moon-stone", "notes": "Moon Stone"}]
+  },
+  {
+    "from": "eevee", "into": "leafeon",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "leaf-stone", "notes": "Leaf Stone"}]
+  },
+  {
+    "from": "eevee", "into": "glaceon",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "ice-stone", "notes": "Ice Stone"}]
+  },
+  {
+    "from": "eevee", "into": "sylveon",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "shiny-stone", "notes": "Shiny Stone"}]
+  },
+  {
+    "from": "porygon", "into": "porygon2",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "up-grade", "notes": "Upgrade item"}]
+  },
+  {
+    "from": "pichu", "into": "pikachu",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15 (no friendship)"}]
+  },
+  {
+    "from": "cleffa", "into": "clefairy",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15 (no friendship)"}]
+  },
+  {
+    "from": "igglybuff", "into": "jigglypuff",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15"}]
+  },
+  {
+    "from": "togepi", "into": "togetic",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15"}]
+  },
+  {
+    "from": "gligar", "into": "gliscor",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "dusk-stone", "notes": "Dusk Stone (no Razor Fang/night)"}]
+  },
+  {
+    "from": "sneasel", "into": "weavile",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "ice-stone", "notes": "Ice Stone"}]
+  },
+  {
+    "from": "porygon2", "into": "porygon-z",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "dubious-disc", "notes": "Dubious Disc"}]
+  },
+  {
+    "from": "smoochum", "into": "jynx",
+    "conditions": [{"trigger": "level_up", "min_level": 21, "item": null, "notes": "Level 21 (was 30)"}]
+  },
+  {
+    "from": "elekid", "into": "electabuzz",
+    "conditions": [{"trigger": "level_up", "min_level": 21, "item": null, "notes": "Level 21 (was 30)"}]
+  },
+  {
+    "from": "magby", "into": "magmar",
+    "conditions": [{"trigger": "level_up", "min_level": 21, "item": null, "notes": "Level 21 (was 30)"}]
+  },
+  {
+    "from": "azurill", "into": "marill",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15 (no friendship)"}]
+  },
+  {
+    "from": "munchlax", "into": "snorlax",
+    "conditions": [{"trigger": "level_up", "min_level": 30, "item": null, "notes": "Level 30 (no friendship)"}]
+  },
+  {
+    "from": "mantyke", "into": "mantine",
+    "conditions": [{"trigger": "level_up", "min_level": 20, "item": null, "notes": "Level 20 (no Remoraid in party)"}]
+  },
+  {
+    "from": "kirlia", "into": "gallade",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "dawn-stone", "notes": "Dawn Stone (any gender)"}]
+  },
+  {
+    "from": "dusclops", "into": "dusknoir",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 50, "item": null, "notes": "Level 50 OR Reaper Cloth"},
+      {"trigger": "use_item", "min_level": null, "item": "reaper-cloth", "notes": "Reaper Cloth"}
+    ]
+  },
+  {
+    "from": "nosepass", "into": "probopass",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "magnet-stone", "notes": "Magnet Stone (IF-specific)"}]
+  },
+  {
+    "from": "riolu", "into": "lucario",
+    "conditions": [{"trigger": "level_up", "min_level": 20, "item": null, "notes": "Level 20 (no friendship/daytime)"}]
+  },
+  {
+    "from": "feebas", "into": "milotic",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 35, "item": null, "notes": "Level 35 OR Prism Scale"},
+      {"trigger": "use_item", "min_level": null, "item": "prism-scale", "notes": "Prism Scale"}
+    ]
+  },
+  {
+    "from": "budew", "into": "roselia",
+    "conditions": [{"trigger": "level_up", "min_level": 15, "item": null, "notes": "Level 15"}]
+  },
+  {
+    "from": "buneary", "into": "lopunny",
+    "conditions": [{"trigger": "level_up", "min_level": 22, "item": null, "notes": "Level 22 (no friendship)"}]
+  },
+  {
+    "from": "snorunt", "into": "froslass",
+    "conditions": [{"trigger": "use_item", "min_level": null, "item": "dawn-stone", "notes": "Dawn Stone (any gender)"}]
+  },
+  {
+    "from": "phantump", "into": "trevenant",
+    "conditions": [
+      {"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 OR Linking Cord"},
+      {"trigger": "use_item", "min_level": null, "item": "linking-cord", "notes": "Linking Cord"}
+    ]
+  },
+  {
+    "from": "sliggoo", "into": "goodra",
+    "conditions": [{"trigger": "level_up", "min_level": 50, "item": null, "notes": "Level 50 (no rain required)"}]
+  },
+  {
+    "from": "pumpkaboo", "into": "gourgeist",
+    "conditions": [{"trigger": "level_up", "min_level": 40, "item": null, "notes": "Level 40 (no trade)"}]
+  },
+  {
+    "from": "swirlix", "into": "slurpuff",
+    "conditions": [{"trigger": "level_up", "min_level": 35, "item": null, "notes": "Level 35 (no trade+item)"}]
+  }
+]
