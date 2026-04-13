@@ -1,22 +1,31 @@
-FROM python:3.12-slim
+# ── builder stage ────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
 
-# Pin uv to a specific minor to avoid silent toolchain drift
 COPY --from=ghcr.io/astral-sh/uv:0.10 /uv /uvx /bin/
 
-# Disable uv cache (no reuse across builds in this single-stage image)
-ENV UV_NO_CACHE=1 \
-    UV_COMPILE_BYTECODE=1
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Resolve dependencies from uv.lock (deterministic). Done before copying source
-# so the dep layer stays cached when only etl/ code changes.
+# Resolve deps from uv.lock. Cached as long as pyproject + uv.lock are unchanged.
 COPY etl/pyproject.toml etl/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+# Install the project itself on top of the cached dep layer.
 COPY etl/ ./etl/
-COPY docker/wait_for_db.py ./docker/wait_for_db.py
 RUN uv sync --frozen --no-dev
+
+# ── runtime stage ────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+# Copy only the resolved venv and the source we need at runtime.
+# uv, build caches, and the lockfile stay in the builder stage.
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/etl /app/etl
+COPY docker/wait_for_db.py ./docker/wait_for_db.py
 
 # Note: /app/data is provided at runtime via bind-mount (see docker-compose.yml).
 
