@@ -33,6 +33,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from psycopg2.extras import execute_values
+
 from etl.utils.db import pg_connection
 from etl.utils.logging import setup_logging
 
@@ -367,31 +369,34 @@ def load_movesets(conn, movesets: list[dict], move_map: dict) -> None:
     # Extended lookup with normalized keys (apostrophes + hyphens)
     lookup = _build_move_fr_lookup(move_fr_map)
 
-    with conn.cursor() as cur:
-        loaded = skipped = 0
-        for record in movesets:
-            raw      = record["move_name_fr"]
-            move_id  = lookup.get(raw.lower()) or lookup.get(_normalize_move_name(raw))
-            if not move_id:
-                skipped += 1
-                continue
+    rows: list[tuple] = []
+    skipped = 0
+    for record in movesets:
+        raw     = record["move_name_fr"]
+        move_id = lookup.get(raw.lower()) or lookup.get(_normalize_move_name(raw))
+        if not move_id:
+            skipped += 1
+            continue
+        rows.append((
+            record["pokemon_if_id"],
+            move_id,
+            record["method"],
+            record.get("level"),
+            record.get("source", "base"),
+        ))
 
-            cur.execute(
-                """INSERT INTO pokemon_move
-                   (pokemon_id, move_id, method, level, source)
-                   VALUES (%s, %s, %s, %s, %s)
-                   ON CONFLICT (pokemon_id, move_id, method) DO NOTHING""",
-                (
-                    record["pokemon_if_id"],
-                    move_id,
-                    record["method"],
-                    record.get("level"),
-                    record.get("source", "base"),
-                ),
-            )
-            loaded += 1
+    with conn.cursor() as cur:
+        execute_values(
+            cur,
+            """INSERT INTO pokemon_move
+               (pokemon_id, move_id, method, level, source)
+               VALUES %s
+               ON CONFLICT (pokemon_id, move_id, method) DO NOTHING""",
+            rows,
+            page_size=2000,
+        )
         conn.commit()
-    LOGGER.info("Loaded %d moveset rows (%d skipped — move not found)", loaded, skipped)
+    LOGGER.info("Loaded %d moveset rows (%d skipped — move not found)", len(rows), skipped)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
