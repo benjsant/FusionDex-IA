@@ -14,6 +14,7 @@ RUN uv pip install --no-cache .
 
 COPY etl/ ./etl/
 COPY docker/wait_for_db.py ./docker/wait_for_db.py
-COPY data/ ./data/
+# Note: /app/data is provided at runtime via bind-mount (see docker-compose.yml).
+# Baking it into the image would be ~700 MB of dead weight — the mount masks it.
 
 CMD ["sh", "-c", "python docker/wait_for_db.py && python etl/pipeline.py"]
