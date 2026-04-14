@@ -187,19 +187,22 @@ CREATE TABLE IF NOT EXISTS pokemon_location (
 
 -- 12. pokemon_move  (moveset complet — source duale Pokepedia + IF)
 --
---     method : 'level_up' | 'tm' | 'tutor' | 'breeding' | 'special'
+--     method : 'level_up' | 'tm' | 'tutor' | 'breeding' | 'special' | 'before_evolution'
 --     source : 'base'            → Pokepedia Gen 1-7 (jeux officiels)
 --              'infinite_fusion' → ajout ou override propre à IF
 --
 --     Exemple Azumarill + Aqua Jet :
 --       row 1 : method='breeding', source='base'             (Pokepedia)
 --       row 2 : method='tm',       source='infinite_fusion'  (CT ajoutée dans IF)
+--
+--     'before_evolution' : move hérité d'une pré-évolution (Charizard hérite de Charmander).
+--                          level est NULL, source='base'.
 CREATE TABLE IF NOT EXISTS pokemon_move (
     id          SERIAL      PRIMARY KEY,
     pokemon_id  INTEGER     NOT NULL REFERENCES pokemon(id) ON DELETE CASCADE,
     move_id     INTEGER     NOT NULL REFERENCES move(id),
     method      VARCHAR(20) NOT NULL CHECK (
-                    method IN ('level_up', 'tm', 'tutor', 'breeding', 'special')
+                    method IN ('level_up', 'tm', 'tutor', 'breeding', 'special', 'before_evolution')
                 ),
     level       INTEGER,    -- niveau d'apprentissage (level_up uniquement)
     source      VARCHAR(20) NOT NULL DEFAULT 'base'
