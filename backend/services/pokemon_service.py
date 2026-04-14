@@ -3,16 +3,30 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Move, Pokemon, PokemonEvolution, PokemonLocation, PokemonMove, Type, TypeEffectiveness
+from backend.db.models import Move, Pokemon, PokemonEvolution, PokemonLocation, PokemonMove, PokemonType, Type, TypeEffectiveness
 
 
-def list_pokemon(db: Session) -> list[Pokemon]:
-    return (
-        db.query(Pokemon)
-        .options(joinedload(Pokemon.types))
-        .order_by(Pokemon.id)
-        .all()
-    )
+def list_pokemon(
+    db: Session,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+    type_id: int | None = None,
+    generation_id: int | None = None,
+    include_hoenn: bool = True,
+) -> list[Pokemon]:
+    query = db.query(Pokemon).options(joinedload(Pokemon.types))
+    if type_id is not None:
+        sub = db.query(PokemonType.pokemon_id).filter(PokemonType.type_id == type_id)
+        query = query.filter(Pokemon.id.in_(sub))
+    if generation_id is not None:
+        query = query.filter(Pokemon.generation_id == generation_id)
+    if not include_hoenn:
+        query = query.filter(Pokemon.is_hoenn_only.is_(False))
+    query = query.order_by(Pokemon.id).offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 
 def get_pokemon_by_id(db: Session, pokemon_id: int) -> Pokemon | None:
