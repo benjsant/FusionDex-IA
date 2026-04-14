@@ -19,6 +19,7 @@ import psycopg2
 
 from etl.utils.db import pg_connection
 from etl.utils.logging import setup_logging
+from etl.utils.sql import load_id_map
 
 LOGGER = setup_logging(__name__)
 
@@ -51,8 +52,7 @@ def load_encounters(conn) -> None:
             )
         conn.commit()
 
-        cur.execute("SELECT id, name_en FROM location")
-        loc_map: dict[str, int] = {name: db_id for db_id, name in cur.fetchall()}
+        loc_map = load_id_map(conn, "location", lower=False)
         LOGGER.info("Locations: %d", len(loc_map))
 
         # ── Insert pokemon_location ───────────────────────────────────────────

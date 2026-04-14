@@ -38,6 +38,7 @@ import psycopg2.extras
 
 from etl.utils.db import pg_connection
 from etl.utils.logging import setup_logging
+from etl.utils.sql import load_id_map
 
 LOGGER = setup_logging(__name__)
 
@@ -142,8 +143,7 @@ def load_sprite_credits(conn) -> None:
             [(n,) for n in sorted(all_creators)],
             page_size=1000,
         )
-        cur.execute("SELECT id, name FROM creator")
-        creator_id_by_name: dict[str, int] = {name: cid for cid, name in cur.fetchall()}
+        creator_id_by_name = load_id_map(conn, "creator", "name", lower=False)
         LOGGER.info("Creators in DB: %d", len(creator_id_by_name))
 
         # ── Insert fusion_sprite ─────────────────────────────────────────────

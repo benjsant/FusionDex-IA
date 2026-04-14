@@ -37,6 +37,7 @@ from psycopg2.extras import execute_values
 
 from etl.utils.db import pg_connection
 from etl.utils.logging import setup_logging
+from etl.utils.sql import load_id_map
 
 LOGGER = setup_logging(__name__)
 
@@ -106,10 +107,8 @@ def load_types(conn, moves: list[dict]) -> dict[str, int]:
                 (name,),
             )
         conn.commit()
-        cur.execute("SELECT id, name_en FROM type")
-        rows = cur.fetchall()
 
-    type_map = {name.lower(): db_id for db_id, name in rows}
+    type_map = load_id_map(conn, "type")
     LOGGER.info("Loaded %d types", len(type_map))
     return type_map
 
@@ -126,10 +125,8 @@ def load_abilities(conn, abilities: list[dict]) -> dict[str, int]:
                 (ab["name_en"], ab.get("name_fr"), ab.get("description_en"), ab.get("description_fr")),
             )
         conn.commit()
-        cur.execute("SELECT id, name_en FROM ability")
-        rows = cur.fetchall()
 
-    ability_map = {name.lower(): db_id for db_id, name in rows}
+    ability_map = load_id_map(conn, "ability")
     LOGGER.info("Loaded %d abilities", len(ability_map))
     return ability_map
 
@@ -159,10 +156,8 @@ def load_moves(conn, moves: list[dict], type_map: dict) -> dict[str, int]:
                 ),
             )
         conn.commit()
-        cur.execute("SELECT id, name_en FROM move")
-        rows = cur.fetchall()
 
-    move_map = {name.lower(): db_id for db_id, name in rows}
+    move_map = load_id_map(conn, "move")
     LOGGER.info("Loaded %d moves", len(move_map))
     return move_map
 
@@ -247,11 +242,7 @@ def load_pokemon_types(conn, pokedex: list[dict], type_map: dict) -> None:
 
 def load_pokemon_abilities(conn, abilities: list[dict], ability_map: dict) -> None:
     """Load pokemon_ability rows from abilities_if.json pokemon lists."""
-    pokemon_name_to_id: dict[str, int] = {}
-    with conn.cursor() as cur:
-        cur.execute("SELECT id, name_en FROM pokemon")
-        for db_id, name_en in cur.fetchall():
-            pokemon_name_to_id[name_en.lower()] = db_id
+    pokemon_name_to_id = load_id_map(conn, "pokemon")
 
     with conn.cursor() as cur:
         for ab in abilities:
@@ -292,11 +283,7 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
     """
     if_overrides_map = _load_if_evolution_overrides()
 
-    pokemon_name_to_id: dict[str, int] = {}
-    with conn.cursor() as cur:
-        cur.execute("SELECT id, name_en FROM pokemon")
-        for db_id, name_en in cur.fetchall():
-            pokemon_name_to_id[name_en.lower()] = db_id
+    pokemon_name_to_id = load_id_map(conn, "pokemon")
 
     with conn.cursor() as cur:
         for evo in evolutions_base:
@@ -360,11 +347,7 @@ def _build_move_fr_lookup(move_fr_map: dict[str, int]) -> dict[str, int]:
 
 def load_movesets(conn, movesets: list[dict], move_map: dict) -> None:
     """Load pokemon_move from movesets_merged.json (name_fr as key)."""
-    move_fr_map: dict[str, int] = {}
-    with conn.cursor() as cur:
-        cur.execute("SELECT id, name_fr FROM move WHERE name_fr IS NOT NULL")
-        for db_id, name_fr in cur.fetchall():
-            move_fr_map[name_fr.lower()] = db_id
+    move_fr_map = load_id_map(conn, "move", "name_fr", where="name_fr IS NOT NULL")
 
     # Extended lookup with normalized keys (apostrophes + hyphens)
     lookup = _build_move_fr_lookup(move_fr_map)

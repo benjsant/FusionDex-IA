@@ -24,6 +24,7 @@ from pathlib import Path
 
 from etl.utils.db import pg_connection
 from etl.utils.logging import setup_logging
+from etl.utils.sql import load_id_map
 
 LOGGER = setup_logging(__name__)
 
@@ -128,17 +129,11 @@ def load_triple_fusions(conn) -> None:
     entries: list[dict] = json.loads(DATA_FILE.read_text())
     LOGGER.info("Loaded %d triple fusion entries from JSON", len(entries))
 
+    pokemon_by_name = load_id_map(conn, "pokemon", lower=False)
+    ability_by_name = load_id_map(conn, "ability", lower=False)
+    type_by_name    = load_id_map(conn, "type",    lower=False)
+
     with conn.cursor() as cur:
-        # ── Build lookup maps ────────────────────────────────────────────────
-        cur.execute("SELECT id, name_en FROM pokemon")
-        pokemon_by_name: dict[str, int] = {name: pid for pid, name in cur.fetchall()}
-
-        cur.execute("SELECT id, name_en FROM ability")
-        ability_by_name: dict[str, int] = {name: aid for aid, name in cur.fetchall()}
-
-        cur.execute("SELECT id, name_en FROM type")
-        type_by_name: dict[str, int] = {name: tid for tid, name in cur.fetchall()}
-
         # ── Seed unique IF types (8 custom combos) ───────────────────────────
         created = seed_unique_if_types(cur, type_by_name)
         if created:
