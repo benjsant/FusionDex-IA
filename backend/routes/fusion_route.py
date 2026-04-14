@@ -6,20 +6,57 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
-from backend.schemas.fusion import FusionResult
+from backend.schemas.fusion import FusionAbilityOut, FusionMoveOut, FusionResult
 from backend.schemas.type_ import TypeOut
-from backend.services.fusion_service import compute_fusion
+from backend.schemas.weakness import WeaknessOut
+from backend.services.fusion_service import (
+    _load_pokemon_with_types,
+    compute_fusion,
+    compute_fusion_abilities,
+    compute_fusion_moves,
+    compute_fusion_weaknesses,
+    random_fusion_ids,
+)
 
 router = APIRouter(prefix="/fusion", tags=["Fusion"])
+
+
+def _to_type_out(t) -> TypeOut | None:
+    if t is None:
+        return None
+    return TypeOut(
+        id=t.id,
+        name_en=t.name_en,
+        name_fr=t.name_fr,
+        is_triple_fusion_type=t.is_triple_fusion_type,
+    )
+
+
+def _load_pair_or_404(db: Session, head_id: int, body_id: int):
+    head = _load_pokemon_with_types(db, head_id)
+    body = _load_pokemon_with_types(db, body_id)
+    if not head or not body:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pokémon #{head_id} or #{body_id} not found",
+        )
+    return head, body
+
+
+@router.get("/random", response_model=FusionResult)
+def get_random_fusion(db: Session = Depends(get_db)):
+    """Retourne une fusion aléatoire (head + body tirés au hasard)."""
+    head_id, body_id = random_fusion_ids(db)
+    return get_fusion(head_id, body_id, db)
 
 
 @router.get("/{head_id}/{body_id}", response_model=FusionResult)
 def get_fusion(head_id: int, body_id: int, db: Session = Depends(get_db)):
     """
-    Calcule les stats, types et sprite d'une fusion.
+    Stats, types et sprite d'une fusion.
 
     - Stats physiques (HP/Atk/Def/Spe) = floor(Body×2/3 + Head×1/3)
-    - Stats spéciales (SpA/SpD)         = floor(Head×2/3 + Body×1/3)
+    - Stats spéciales (SpA/SpD)        = floor(Head×2/3 + Body×1/3)
     - Type 1 = type principal de Head
     - Type 2 = type principal de Body (si différent)
     - Sprite : `{head_id}.{body_id}.png`
@@ -30,17 +67,6 @@ def get_fusion(head_id: int, body_id: int, db: Session = Depends(get_db)):
             status_code=404,
             detail=f"Pokémon #{head_id} or #{body_id} not found",
         )
-
-    def to_type_out(t) -> TypeOut | None:
-        if t is None:
-            return None
-        return TypeOut(
-            id=t.id,
-            name_en=t.name_en,
-            name_fr=t.name_fr,
-            is_triple_fusion_type=t.is_triple_fusion_type,
-        )
-
     return FusionResult(
         head_id=result["head_id"],
         body_id=result["body_id"],
@@ -54,7 +80,45 @@ def get_fusion(head_id: int, body_id: int, db: Session = Depends(get_db)):
         sp_attack=result["sp_attack"],
         sp_defense=result["sp_defense"],
         speed=result["speed"],
-        type1=to_type_out(result["type1"]),
-        type2=to_type_out(result["type2"]),
+        type1=_to_type_out(result["type1"]),
+        type2=_to_type_out(result["type2"]),
         sprite_path=result["sprite_path"],
     )
+
+
+@router.get("/{head_id}/{body_id}/moves", response_model=list[FusionMoveOut])
+def get_fusion_moves(head_id: int, body_id: int, db: Session = Depends(get_db)):
+    """Moveset combiné head + body, dédupliqué par move (origin='head'|'body'|'both')."""
+    head, body = _load_pair_or_404(db, head_id, body_id)
+    rows = compute_fusion_moves(db, head.id, body.id)
+    return [
+        FusionMoveOut(
+            move_id=r["move_id"],
+            name_en=r["name_en"],
+            name_fr=r["name_fr"],
+            category=r["category"],
+            power=r["power"],
+            accuracy=r["accuracy"],
+            pp=r["pp"],
+            type=_to_type_out(r["type"]),
+            method=r["method"],
+            level=r["level"],
+            source=r["source"],
+            origin=r["origin"],
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{head_id}/{body_id}/abilities", response_model=list[FusionAbilityOut])
+def get_fusion_abilities(head_id: int, body_id: int, db: Session = Depends(get_db)):
+    """Abilities disponibles pour la fusion (règle IF : head slot 1 + body slot 1 + hidden)."""
+    head, body = _load_pair_or_404(db, head_id, body_id)
+    return [FusionAbilityOut(**a) for a in compute_fusion_abilities(db, head, body)]
+
+
+@router.get("/{head_id}/{body_id}/weaknesses", response_model=list[WeaknessOut])
+def get_fusion_weaknesses(head_id: int, body_id: int, db: Session = Depends(get_db)):
+    """Multiplicateurs de dégâts contre les types de la fusion (non-neutres uniquement)."""
+    head, body = _load_pair_or_404(db, head_id, body_id)
+    return compute_fusion_weaknesses(db, head, body)

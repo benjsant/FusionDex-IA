@@ -8,13 +8,29 @@ from backend.db.models import Move, PokemonMove
 from backend.utils.text import normalize
 
 
-def list_moves(db: Session) -> list[Move]:
-    return (
-        db.query(Move)
-        .options(joinedload(Move.type))
-        .order_by(Move.id)
-        .all()
-    )
+def list_moves(
+    db: Session,
+    *,
+    category: str | None = None,
+    type_id: int | None = None,
+    power_min: int | None = None,
+    power_max: int | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[Move]:
+    query = db.query(Move).options(joinedload(Move.type))
+    if category is not None:
+        query = query.filter(Move.category == category)
+    if type_id is not None:
+        query = query.filter(Move.type_id == type_id)
+    if power_min is not None:
+        query = query.filter(Move.power >= power_min)
+    if power_max is not None:
+        query = query.filter(Move.power <= power_max)
+    query = query.order_by(Move.id).offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 
 def get_move_by_id(db: Session, move_id: int) -> Move | None:
