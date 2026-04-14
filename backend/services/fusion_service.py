@@ -12,10 +12,158 @@ Types:
 from __future__ import annotations
 
 import math
+import random
+from collections import defaultdict
+from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Pokemon, PokemonType
+from backend.db.models import Move, Pokemon, PokemonAbility, PokemonMove, PokemonType, Type, TypeEffectiveness
+
+
+def _load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
+    return (
+        db.query(Pokemon)
+        .options(joinedload(Pokemon.types).joinedload(PokemonType.type))
+        .filter(Pokemon.id == pid)
+        .first()
+    )
+
+
+def compute_fusion_types(head: Pokemon, body: Pokemon) -> tuple[Type | None, Type | None]:
+    """Return (type1, type2) of a fusion. type2 dropped if identical to type1."""
+    head_types = sorted(head.types, key=lambda pt: pt.slot)
+    body_types = sorted(body.types, key=lambda pt: pt.slot)
+    type1 = head_types[0].type if head_types else None
+    type2 = body_types[0].type if body_types else None
+    if type1 and type2 and type1.id == type2.id:
+        type2 = None
+    return type1, type2
+
+
+def compute_fusion_weaknesses(db: Session, head: Pokemon, body: Pokemon) -> list[dict]:
+    """Damage multipliers against the fusion's type combination."""
+    type1, type2 = compute_fusion_types(head, body)
+    defending_ids = [t.id for t in (type1, type2) if t]
+    if not defending_ids:
+        return []
+
+    multipliers: dict[int, Decimal] = defaultdict(lambda: Decimal("1.0"))
+    rows = (
+        db.query(TypeEffectiveness)
+        .filter(TypeEffectiveness.defending_type_id.in_(defending_ids))
+        .all()
+    )
+    for eff in rows:
+        multipliers[eff.attacking_type_id] *= eff.multiplier
+
+    type_map = {t.id: t for t in db.query(Type).all()}
+    return [
+        {
+            "attacking_type_id":      tid,
+            "attacking_type_name_en": type_map[tid].name_en,
+            "attacking_type_name_fr": type_map[tid].name_fr,
+            "multiplier":             float(mult),
+        }
+        for tid, mult in sorted(multipliers.items())
+        if mult != Decimal("1.0") and tid in type_map
+    ]
+
+
+def compute_fusion_moves(db: Session, head_id: int, body_id: int) -> list[dict]:
+    """Union of head + body movesets, one row per move_id, origin labelled."""
+    rows = (
+        db.query(PokemonMove)
+        .options(joinedload(PokemonMove.move).joinedload(Move.type))
+        .filter(PokemonMove.pokemon_id.in_((head_id, body_id)))
+        .all()
+    )
+    # Group by move_id, track origin + prefer lowest level_up row
+    by_move: dict[int, dict] = {}
+    origins: dict[int, set[str]] = defaultdict(set)
+    for r in rows:
+        origins[r.move_id].add("head" if r.pokemon_id == head_id else "body")
+        existing = by_move.get(r.move_id)
+        if existing is None:
+            by_move[r.move_id] = {"row": r}
+            continue
+        prev = existing["row"]
+        if r.method == "level_up" and (prev.method != "level_up" or (r.level or 9999) < (prev.level or 9999)):
+            by_move[r.move_id] = {"row": r}
+
+    out = []
+    for move_id, entry in by_move.items():
+        r = entry["row"]
+        src = origins[move_id]
+        origin = "both" if len(src) == 2 else next(iter(src))
+        out.append({
+            "move_id":  move_id,
+            "name_en":  r.move.name_en,
+            "name_fr":  r.move.name_fr,
+            "category": r.move.category,
+            "power":    r.move.power,
+            "accuracy": r.move.accuracy,
+            "pp":       r.move.pp,
+            "type":     r.move.type,
+            "method":   r.method,
+            "level":    r.level,
+            "source":   r.source,
+            "origin":   origin,
+        })
+    out.sort(key=lambda m: (m["method"], m["level"] or 0, m["name_en"]))
+    return out
+
+
+def compute_fusion_abilities(db: Session, head: Pokemon, body: Pokemon) -> list[dict]:
+    """
+    Fusion abilities follow the IF rule:
+      - Head's slot-1 ability → fusion slot 1
+      - Body's slot-1 ability → fusion slot 2 (only if different)
+      - Hidden abilities of both are listed as hidden options
+    """
+    def ability_rows(pid: int) -> list[PokemonAbility]:
+        return (
+            db.query(PokemonAbility)
+            .options(joinedload(PokemonAbility.ability))
+            .filter(PokemonAbility.pokemon_id == pid)
+            .order_by(PokemonAbility.slot)
+            .all()
+        )
+
+    head_abilities = ability_rows(head.id)
+    body_abilities = ability_rows(body.id)
+
+    head_slot1 = next((a for a in head_abilities if not a.is_hidden), None)
+    body_slot1 = next((a for a in body_abilities if not a.is_hidden), None)
+    head_hidden = next((a for a in head_abilities if a.is_hidden), None)
+    body_hidden = next((a for a in body_abilities if a.is_hidden), None)
+
+    result: list[dict] = []
+    seen: set[int] = set()
+
+    def add(a: PokemonAbility | None, origin: str, hidden: bool) -> None:
+        if a is None or a.ability_id in seen:
+            return
+        seen.add(a.ability_id)
+        result.append({
+            "ability_id": a.ability_id,
+            "name_en":    a.ability.name_en,
+            "name_fr":    a.ability.name_fr,
+            "is_hidden":  hidden,
+            "origin":     origin,
+        })
+
+    add(head_slot1, "head", False)
+    add(body_slot1, "body", False)
+    add(head_hidden, "head", True)
+    add(body_hidden, "body", True)
+    return result
+
+
+def random_fusion_ids(db: Session) -> tuple[int, int]:
+    """Pick two random Pokémon IDs for a random fusion."""
+    ids = [pid for (pid,) in db.query(Pokemon.id).all()]
+    return random.choice(ids), random.choice(ids)
 
 
 def compute_fusion(
@@ -27,18 +175,8 @@ def compute_fusion(
     Returns a dict with computed fusion stats, types, and sprite path.
     Returns None if either Pokémon is not found.
     """
-    head = (
-        db.query(Pokemon)
-        .options(joinedload(Pokemon.types).joinedload(PokemonType.type))
-        .filter(Pokemon.id == head_id)
-        .first()
-    )
-    body = (
-        db.query(Pokemon)
-        .options(joinedload(Pokemon.types).joinedload(PokemonType.type))
-        .filter(Pokemon.id == body_id)
-        .first()
-    )
+    head = _load_pokemon_with_types(db, head_id)
+    body = _load_pokemon_with_types(db, body_id)
 
     if not head or not body:
         return None
@@ -57,16 +195,7 @@ def compute_fusion(
     sp_attack  = spec(head.sp_attack,  body.sp_attack)
     sp_defense = spec(head.sp_defense, body.sp_defense)
 
-    # ── Types ─────────────────────────────────────────────────────────────────
-    head_types = sorted(head.types, key=lambda pt: pt.slot)
-    body_types = sorted(body.types, key=lambda pt: pt.slot)
-
-    type1_obj = head_types[0].type if head_types else None
-    type2_obj = body_types[0].type if body_types else None
-
-    # Drop type2 if identical to type1
-    if type1_obj and type2_obj and type1_obj.id == type2_obj.id:
-        type2_obj = None
+    type1_obj, type2_obj = compute_fusion_types(head, body)
 
     return {
         "head_id":       head_id,

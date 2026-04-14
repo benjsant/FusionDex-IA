@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from backend.db.models import Pokemon
 from backend.db.session import get_db
+from backend.routes.deps import get_pokemon_or_404
 from backend.schemas.evolution import EvolutionOut
 from backend.schemas.location import LocationOut
 from backend.schemas.move import PokemonMoveOut
 from backend.schemas.pokemon import AbilityOut, PokemonDetail, PokemonListItem, TypeOut
+from backend.schemas.type_ import TypeOut as TypeOutMove
 from backend.schemas.weakness import WeaknessOut
 from backend.services.pokemon_service import (
     compute_pokemon_weaknesses,
-    get_pokemon_by_id,
     get_pokemon_evolutions,
     get_pokemon_locations,
     get_pokemon_moves,
@@ -22,11 +24,7 @@ router = APIRouter(prefix="/pokemon", tags=["Pokemon"])
 
 def _serialize_types(types_rel) -> list[TypeOut]:
     return [
-        TypeOut(
-            slot=pt.slot,
-            name_en=pt.type.name_en,
-            name_fr=pt.type.name_fr,
-        )
+        TypeOut(slot=pt.slot, name_en=pt.type.name_en, name_fr=pt.type.name_fr)
         for pt in sorted(types_rel, key=lambda x: x.slot)
     ]
 
@@ -43,23 +41,38 @@ def _serialize_abilities(abilities_rel) -> list[AbilityOut]:
     ]
 
 
+def _to_list_item(p: Pokemon) -> PokemonListItem:
+    return PokemonListItem(
+        id=p.id,
+        national_id=p.national_id,
+        name_en=p.name_en,
+        name_fr=p.name_fr,
+        types=_serialize_types(p.types),
+        sprite_path=p.sprite_path,
+        is_hoenn_only=p.is_hoenn_only,
+        pokepedia_url=p.pokepedia_url,
+    )
+
+
 @router.get("/", response_model=list[PokemonListItem])
-def get_pokemon_list(db: Session = Depends(get_db)):
-    """Liste tous les Pokémon du jeu Infinite Fusion."""
-    pokemons = list_pokemon(db)
-    return [
-        PokemonListItem(
-            id=p.id,
-            national_id=p.national_id,
-            name_en=p.name_en,
-            name_fr=p.name_fr,
-            types=_serialize_types(p.types),
-            sprite_path=p.sprite_path,
-            is_hoenn_only=p.is_hoenn_only,
-            pokepedia_url=p.pokepedia_url,
-        )
-        for p in pokemons
-    ]
+def get_pokemon_list(
+    db: Session = Depends(get_db),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    type_id: int | None = Query(None, ge=1, description="Filtre par type (id)"),
+    generation_id: int | None = Query(None, ge=1, description="Filtre par génération"),
+    include_hoenn: bool = Query(True, description="Inclure les Pokémon Hoenn-only"),
+):
+    """Liste les Pokémon du jeu Infinite Fusion, avec pagination + filtres."""
+    pokemons = list_pokemon(
+        db,
+        limit=limit,
+        offset=offset,
+        type_id=type_id,
+        generation_id=generation_id,
+        include_hoenn=include_hoenn,
+    )
+    return [_to_list_item(p) for p in pokemons]
 
 
 @router.get("/search", response_model=list[PokemonListItem])
@@ -68,28 +81,12 @@ def search_pokemon_route(
     db: Session = Depends(get_db),
 ):
     """Recherche par nom anglais ou français (accent-insensitive)."""
-    pokemons = search_pokemon(db, q)
-    return [
-        PokemonListItem(
-            id=p.id,
-            national_id=p.national_id,
-            name_en=p.name_en,
-            name_fr=p.name_fr,
-            types=_serialize_types(p.types),
-            sprite_path=p.sprite_path,
-            is_hoenn_only=p.is_hoenn_only,
-            pokepedia_url=p.pokepedia_url,
-        )
-        for p in pokemons
-    ]
+    return [_to_list_item(p) for p in search_pokemon(db, q)]
 
 
 @router.get("/{pokemon_id}", response_model=PokemonDetail)
-def get_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
+def get_pokemon(p: Pokemon = Depends(get_pokemon_or_404)):
     """Fiche détaillée d'un Pokémon par son IF ID."""
-    p = get_pokemon_by_id(db, pokemon_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="Pokémon not found")
     return PokemonDetail(
         id=p.id,
         national_id=p.national_id,
@@ -112,14 +109,12 @@ def get_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{pokemon_id}/moves", response_model=list[PokemonMoveOut])
-def get_moves_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
-    """Moveset complet d'un Pokémon (level_up, tm, breeding, tutor)."""
-    p = get_pokemon_by_id(db, pokemon_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="Pokémon not found")
-
-    from backend.schemas.type_ import TypeOut as TypeOutMove
-    rows = get_pokemon_moves(db, pokemon_id)
+def get_moves_for_pokemon(
+    p: Pokemon = Depends(get_pokemon_or_404),
+    db: Session = Depends(get_db),
+):
+    """Moveset complet (level_up, tm, breeding, tutor, before_evolution)."""
+    rows = get_pokemon_moves(db, p.id)
     return [
         PokemonMoveOut(
             move_id=r.move_id,
@@ -144,13 +139,12 @@ def get_moves_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{pokemon_id}/evolutions", response_model=list[EvolutionOut])
-def get_evolutions_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
+def get_evolutions_for_pokemon(
+    p: Pokemon = Depends(get_pokemon_or_404),
+    db: Session = Depends(get_db),
+):
     """Chaîne d'évolutions d'un Pokémon."""
-    p = get_pokemon_by_id(db, pokemon_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="Pokémon not found")
-
-    rows = get_pokemon_evolutions(db, pokemon_id)
+    rows = get_pokemon_evolutions(db, p.id)
     return [
         EvolutionOut(
             id=r.id,
@@ -170,12 +164,12 @@ def get_evolutions_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{pokemon_id}/locations", response_model=list[LocationOut])
-def get_locations_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
+def get_locations_for_pokemon(
+    p: Pokemon = Depends(get_pokemon_or_404),
+    db: Session = Depends(get_db),
+):
     """Lieux d'encounter d'un Pokémon (wild, static, legendary…)."""
-    p = get_pokemon_by_id(db, pokemon_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="Pokémon not found")
-    rows = get_pokemon_locations(db, pokemon_id)
+    rows = get_pokemon_locations(db, p.id)
     return [
         LocationOut(
             location_id=r.location_id,
@@ -188,9 +182,9 @@ def get_locations_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{pokemon_id}/weaknesses", response_model=list[WeaknessOut])
-def get_weaknesses_for_pokemon(pokemon_id: int, db: Session = Depends(get_db)):
+def get_weaknesses_for_pokemon(
+    p: Pokemon = Depends(get_pokemon_or_404),
+    db: Session = Depends(get_db),
+):
     """Multiplicateurs de dégâts par type attaquant (non-neutres uniquement)."""
-    result = compute_pokemon_weaknesses(db, pokemon_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Pokémon not found")
-    return result
+    return compute_pokemon_weaknesses(db, p.id) or []

@@ -37,9 +37,26 @@ def _move_to_list_item(m) -> MoveListItem:
 
 
 @router.get("/", response_model=list[MoveListItem])
-def get_moves(db: Session = Depends(get_db)):
-    """Liste toutes les capacités (644 moves IF)."""
-    return [_move_to_list_item(m) for m in list_moves(db)]
+def get_moves(
+    db: Session = Depends(get_db),
+    category: str | None = Query(None, pattern="^(Physical|Special|Status)$"),
+    type_id: int | None = Query(None, ge=1),
+    power_min: int | None = Query(None, ge=0),
+    power_max: int | None = Query(None, ge=0),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """Liste les capacités avec filtres optionnels (category/type/power/pagination)."""
+    moves = list_moves(
+        db,
+        category=category,
+        type_id=type_id,
+        power_min=power_min,
+        power_max=power_max,
+        limit=limit,
+        offset=offset,
+    )
+    return [_move_to_list_item(m) for m in moves]
 
 
 @router.get("/search", response_model=list[MoveListItem])

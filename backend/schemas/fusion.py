@@ -5,6 +5,35 @@ from pydantic import BaseModel
 from backend.schemas.type_ import TypeOut
 
 
+class FusionMoveOut(BaseModel):
+    """Move learnable by a fusion — includes which parent teaches it."""
+    move_id: int
+    name_en: str
+    name_fr: str | None
+    category: str
+    power: int | None
+    accuracy: int | None
+    pp: int
+    type: TypeOut
+    method: str
+    level: int | None
+    source: str
+    origin: str  # 'head' | 'body' | 'both'
+
+    model_config = {"from_attributes": True}
+
+
+class FusionAbilityOut(BaseModel):
+    """Ability available to a fusion, labelled by origin."""
+    ability_id: int
+    name_en: str
+    name_fr: str | None
+    is_hidden: bool
+    origin: str  # 'head' | 'body'
+
+    model_config = {"from_attributes": True}
+
+
 class FusionResult(BaseModel):
     head_id: int
     body_id: int
