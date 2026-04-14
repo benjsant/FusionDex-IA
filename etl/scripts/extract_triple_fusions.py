@@ -30,14 +30,14 @@ Structure per entry:
 from __future__ import annotations
 
 import json
-import logging
 import re
 from pathlib import Path
 
 from etl.utils.http import get_json
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+from etl.utils.logging import setup_logging
+
+LOGGER = setup_logging(__name__)
 
 WIKI_API = "https://infinitefusion.fandom.com/api.php"
 OUTPUT   = Path("data/triple_fusions_if.json")

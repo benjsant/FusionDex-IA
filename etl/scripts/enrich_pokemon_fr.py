@@ -10,13 +10,12 @@ Idempotent : only updates rows where pokepedia_url IS NULL.
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 
-from etl.utils.db import get_pg_connection as get_connection
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
 
-LOGGER    = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
 DATA_FILE = Path("data/pokepedia_names.json")
 
@@ -58,15 +57,8 @@ def enrich_pokemon_pokepedia(conn) -> None:
 def main() -> None:
     if not DATA_FILE.exists():
         raise FileNotFoundError(f"{DATA_FILE} not found")
-    conn = get_connection()
-    try:
+    with pg_connection() as conn:
         enrich_pokemon_pokepedia(conn)
-    except Exception:
-        conn.rollback()
-        LOGGER.exception("enrich_pokemon_fr failed — rolling back")
-        raise
-    finally:
-        conn.close()
 
 
 if __name__ == "__main__":

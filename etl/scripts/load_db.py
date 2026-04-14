@@ -31,101 +31,25 @@ Sources:
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 
-import psycopg2
 from psycopg2.extras import execute_values
 
-from etl.utils.db import get_pg_connection
+from etl.utils.db import pg_connection
+from etl.utils.logging import setup_logging
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+LOGGER = setup_logging(__name__)
 
-# IF overrides for evolution methods (from Differences_with_the_official_games wiki page)
-# Format: (from_name_en, into_name_en): [(trigger, min_level, item_en, if_notes)]
-# Multiple tuples = alternative conditions
-IF_EVOLUTION_OVERRIDES: dict[tuple[str, str], list[tuple]] = {
-    ("golbat",      "crobat"):      [("level_up",  40,   None,         "Level 40 (no friendship)")],
-    ("poliwhirl",   "politoed"):    [("level_up",  37,   None,         "Level 37 OR King's Rock"),
-                                     ("use_item",  None, "kings-rock", "King's Rock")],
-    ("kadabra",     "alakazam"):    [("level_up",  40,   None,         "Level 40 OR Linking Cord"),
-                                     ("use_item",  None, "linking-cord", "Linking Cord")],
-    ("machoke",     "machamp"):     [("level_up",  40,   None,         "Level 40 OR Linking Cord"),
-                                     ("use_item",  None, "linking-cord", "Linking Cord")],
-    ("graveler",    "golem"):       [("level_up",  40,   None,         "Level 40 OR Linking Cord"),
-                                     ("use_item",  None, "linking-cord", "Linking Cord")],
-    ("slowpoke",    "slowking"):    [("use_item",  None, "water-stone",  "Water Stone OR King's Rock"),
-                                     ("use_item",  None, "kings-rock",  "King's Rock")],
-    ("magneton",    "magnezone"):   [("use_item",  None, "magnet-stone", "Magnet Stone (IF-specific)")],
-    ("haunter",     "gengar"):      [("level_up",  40,   None,         "Level 40 OR Linking Cord"),
-                                     ("use_item",  None, "linking-cord", "Linking Cord")],
-    ("onix",        "steelix"):     [("level_up",  40,   None,         "Level 40 OR Metal Coat"),
-                                     ("use_item",  None, "metal-coat",  "Metal Coat")],
-    ("rhydon",      "rhyperior"):   [("level_up",  55,   None,         "Level 55 OR Protector"),
-                                     ("use_item",  None, "protector",   "Protector")],
-    ("chansey",     "blissey"):     [("level_up",  42,   None,         "Level 42 (no friendship)")],
-    ("scyther",     "scizor"):      [("level_up",  40,   None,         "Level 40 OR Metal Coat"),
-                                     ("use_item",  None, "metal-coat",  "Metal Coat")],
-    ("seadra",      "kingdra"):     [("level_up",  50,   None,         "Level 50 OR Dragon Scale"),
-                                     ("use_item",  None, "dragon-scale", "Dragon Scale")],
-    ("electabuzz",  "electivire"):  [("level_up",  50,   None,         "Level 50 OR Electirizer"),
-                                     ("use_item",  None, "electirizer", "Electirizer")],
-    ("magmar",      "magmortar"):   [("level_up",  50,   None,         "Level 50 OR Magmarizer"),
-                                     ("use_item",  None, "magmarizer",  "Magmarizer")],
-    ("eevee",       "espeon"):      [("use_item",  None, "sun-stone",   "Sun Stone (no daytime/friendship)")],
-    ("eevee",       "umbreon"):     [("use_item",  None, "moon-stone",  "Moon Stone")],
-    ("eevee",       "leafeon"):     [("use_item",  None, "leaf-stone",  "Leaf Stone")],
-    ("eevee",       "glaceon"):     [("use_item",  None, "ice-stone",   "Ice Stone")],
-    ("eevee",       "sylveon"):     [("use_item",  None, "shiny-stone", "Shiny Stone")],
-    ("porygon",     "porygon2"):    [("use_item",  None, "up-grade",    "Upgrade item")],
-    ("pichu",       "pikachu"):     [("level_up",  15,   None,         "Level 15 (no friendship)")],
-    ("cleffa",      "clefairy"):    [("level_up",  15,   None,         "Level 15 (no friendship)")],
-    ("igglybuff",   "jigglypuff"):  [("level_up",  15,   None,         "Level 15")],
-    ("togepi",      "togetic"):     [("level_up",  15,   None,         "Level 15")],
-    ("gligar",      "gliscor"):     [("use_item",  None, "dusk-stone",  "Dusk Stone (no Razor Fang/night)")],
-    ("sneasel",     "weavile"):     [("use_item",  None, "ice-stone",   "Ice Stone")],
-    ("porygon2",    "porygon-z"):   [("use_item",  None, "dubious-disc","Dubious Disc")],
-    ("smoochum",    "jynx"):        [("level_up",  21,   None,         "Level 21 (was 30)")],
-    ("elekid",      "electabuzz"):  [("level_up",  21,   None,         "Level 21 (was 30)")],
-    ("magby",       "magmar"):      [("level_up",  21,   None,         "Level 21 (was 30)")],
-    ("azurill",     "marill"):      [("level_up",  15,   None,         "Level 15 (no friendship)")],
-    ("munchlax",    "snorlax"):     [("level_up",  30,   None,         "Level 30 (no friendship)")],
-    ("mantyke",     "mantine"):     [("level_up",  20,   None,         "Level 20 (no Remoraid in party)")],
-    ("kirlia",      "gallade"):     [("use_item",  None, "dawn-stone",  "Dawn Stone (any gender)")],
-    ("dusclops",    "dusknoir"):    [("level_up",  50,   None,         "Level 50 OR Reaper Cloth"),
-                                     ("use_item",  None, "reaper-cloth","Reaper Cloth")],
-    ("nosepass",    "probopass"):   [("use_item",  None, "magnet-stone","Magnet Stone (IF-specific)")],
-    ("riolu",       "lucario"):     [("level_up",  20,   None,         "Level 20 (no friendship/daytime)")],
-    ("feebas",      "milotic"):     [("level_up",  35,   None,         "Level 35 OR Prism Scale"),
-                                     ("use_item",  None, "prism-scale", "Prism Scale")],
-    ("budew",       "roselia"):     [("level_up",  15,   None,         "Level 15")],
-    ("buneary",     "lopunny"):     [("level_up",  22,   None,         "Level 22 (no friendship)")],
-    ("snorunt",     "froslass"):    [("use_item",  None, "dawn-stone",  "Dawn Stone (any gender)")],
-    ("phantump",    "trevenant"):   [("level_up",  40,   None,         "Level 40 OR Linking Cord"),
-                                     ("use_item",  None, "linking-cord","Linking Cord")],
-    ("sliggoo",     "goodra"):      [("level_up",  50,   None,         "Level 50 (no rain required)")],
-    ("pumpkaboo",   "gourgeist"):   [("level_up",  40,   None,         "Level 40 (no trade)")],
-    ("swirlix",     "slurpuff"):    [("level_up",  35,   None,         "Level 35 (no trade+item)")],
-}
+# IF-specific evolution rules (from Differences_with_the_official_games wiki page)
+# are curated data, not code — kept in etl/scripts/data/if_evolution_overrides.json
+# and indexed below by (from_name_en, into_name_en). Each value is a list of
+# alternative {trigger, min_level, item, notes} conditions.
+IF_EVO_OVERRIDES_FILE = Path(__file__).parent / "data" / "if_evolution_overrides.json"
 
 
-# ─── Loader helpers ───────────────────────────────────────────────────────────
-
-def upsert(conn, table: str, rows: list[dict], conflict_col: str = "id") -> int:
-    """Generic single-column-conflict upsert using execute_values."""
-    if not rows:
-        return 0
-    cols   = list(rows[0].keys())
-    values = [[r[c] for c in cols] for r in rows]
-    sql    = (
-        f"INSERT INTO {table} ({', '.join(cols)}) VALUES %s "
-        f"ON CONFLICT ({conflict_col}) DO NOTHING"
-    )
-    with conn.cursor() as cur:
-        execute_values(cur, sql, values)
-    conn.commit()
-    return len(rows)
+def _load_if_evolution_overrides() -> dict[tuple[str, str], list[dict]]:
+    entries = json.loads(IF_EVO_OVERRIDES_FILE.read_text())
+    return {(e["from"], e["into"]): e["conditions"] for e in entries}
 
 
 # ─── Load functions per table ─────────────────────────────────────────────────
@@ -165,24 +89,21 @@ def load_generations(conn) -> dict[int, int]:
 
 
 def load_types(conn, moves: list[dict]) -> dict[str, int]:
-    """Seed type table from move data. Returns {name_en_lower: db_id}."""
+    """Seed type table from move data. Returns {name_en_lower: db_id}.
+
+    Note: the 8 unique IF triple-fusion types (Ice/Fire/Electric, …) are
+    seeded separately by ``load_triple_fusions.py`` with
+    ``is_triple_fusion_type=true`` and FR names.
+    """
     # Capitalize to match the canonical form inserted by seed_type_effectiveness
     type_names_en = {m["type_en"].capitalize() for m in moves if m.get("type_en")}
 
-    # The 9 triple-fusion types — added manually since not in List of Moves
-    TRIPLE_FUSION_TYPES = {
-        "Ice/fire/electric", "Fire/water/electric", "Water/ground/flying",
-        "Dragon/ghost/steel", "Ice/fire/electric/dragon", "Psychic/grass/steel",
-        "Psychic/steel/bug", "Ice/rock/steel", "Fire/water/grass",
-    }
-
     with conn.cursor() as cur:
         for name in sorted(type_names_en):
-            is_tf = name in TRIPLE_FUSION_TYPES
             cur.execute(
-                "INSERT INTO type (name_en, is_triple_fusion_type) VALUES (%s, %s) "
+                "INSERT INTO type (name_en) VALUES (%s) "
                 "ON CONFLICT (name_en) DO NOTHING",
-                (name, is_tf),
+                (name,),
             )
         conn.commit()
         cur.execute("SELECT id, name_en FROM type")
@@ -367,8 +288,10 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
     """
     Load evolution data.
     Base evolutions come from PokeAPI (evolutions_base.json).
-    IF overrides replace or augment those based on IF_EVOLUTION_OVERRIDES.
+    IF overrides replace or augment those based on if_evolution_overrides.json.
     """
+    if_overrides_map = _load_if_evolution_overrides()
+
     pokemon_name_to_id: dict[str, int] = {}
     with conn.cursor() as cur:
         cur.execute("SELECT id, name_en FROM pokemon")
@@ -383,11 +306,11 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
                 continue
 
             key          = (evo["from_name"].lower(), evo["into_name"].lower())
-            if_overrides = IF_EVOLUTION_OVERRIDES.get(key)
+            if_overrides = if_overrides_map.get(key)
 
             if if_overrides:
                 # Replace with IF-specific conditions
-                for trigger, min_level, item, notes in if_overrides:
+                for cond in if_overrides:
                     cur.execute(
                         """INSERT INTO pokemon_evolution
                            (pokemon_id, evolves_into_id, trigger_type, min_level,
@@ -395,7 +318,8 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
                            VALUES (%s, %s, %s, %s, %s, TRUE, %s)
                            ON CONFLICT (pokemon_id, evolves_into_id, trigger_type, item_name_en)
                            DO NOTHING""",
-                        (from_id, into_id, trigger, min_level, item, notes),
+                        (from_id, into_id, cond["trigger"], cond["min_level"],
+                         cond["item"], cond["notes"]),
                     )
             else:
                 # Base game evolution, unmodified
@@ -410,8 +334,6 @@ def load_evolutions(conn, evolutions_base: list[dict]) -> None:
                 )
         conn.commit()
     LOGGER.info("Loaded evolutions")
-
-
 
 
 def _normalize_move_name(name: str) -> str:
@@ -447,31 +369,34 @@ def load_movesets(conn, movesets: list[dict], move_map: dict) -> None:
     # Extended lookup with normalized keys (apostrophes + hyphens)
     lookup = _build_move_fr_lookup(move_fr_map)
 
-    with conn.cursor() as cur:
-        loaded = skipped = 0
-        for record in movesets:
-            raw      = record["move_name_fr"]
-            move_id  = lookup.get(raw.lower()) or lookup.get(_normalize_move_name(raw))
-            if not move_id:
-                skipped += 1
-                continue
+    rows: list[tuple] = []
+    skipped = 0
+    for record in movesets:
+        raw     = record["move_name_fr"]
+        move_id = lookup.get(raw.lower()) or lookup.get(_normalize_move_name(raw))
+        if not move_id:
+            skipped += 1
+            continue
+        rows.append((
+            record["pokemon_if_id"],
+            move_id,
+            record["method"],
+            record.get("level"),
+            record.get("source", "base"),
+        ))
 
-            cur.execute(
-                """INSERT INTO pokemon_move
-                   (pokemon_id, move_id, method, level, source)
-                   VALUES (%s, %s, %s, %s, %s)
-                   ON CONFLICT (pokemon_id, move_id, method) DO NOTHING""",
-                (
-                    record["pokemon_if_id"],
-                    move_id,
-                    record["method"],
-                    record.get("level"),
-                    record.get("source", "base"),
-                ),
-            )
-            loaded += 1
+    with conn.cursor() as cur:
+        execute_values(
+            cur,
+            """INSERT INTO pokemon_move
+               (pokemon_id, move_id, method, level, source)
+               VALUES %s
+               ON CONFLICT (pokemon_id, move_id, method) DO NOTHING""",
+            rows,
+            page_size=2000,
+        )
         conn.commit()
-    LOGGER.info("Loaded %d moveset rows (%d skipped — move not found)", loaded, skipped)
+    LOGGER.info("Loaded %d moveset rows (%d skipped — move not found)", len(rows), skipped)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -499,9 +424,7 @@ def main() -> None:
     evolutions   = json.loads(Path("data/evolutions_base.json").read_text())
 
     LOGGER.info("Connecting to PostgreSQL...")
-    conn = get_pg_connection()
-
-    try:
+    with pg_connection() as conn:
         gen_map     = load_generations(conn)
         type_map    = load_types(conn, moves)
         ability_map = load_abilities(conn, abilities)
@@ -512,12 +435,6 @@ def main() -> None:
         load_pokemon_abilities(conn, abilities, ability_map)
         load_evolutions(conn, evolutions)
         load_movesets(conn, movesets, move_map)
-    except Exception:
-        conn.rollback()
-        LOGGER.exception("ETL failed — rolling back")
-        raise
-    finally:
-        conn.close()
 
     LOGGER.info("All data loaded successfully.")
 

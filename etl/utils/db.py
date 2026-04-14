@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
+from typing import Iterator
 
 import psycopg2
 from sqlalchemy import create_engine
@@ -18,6 +20,27 @@ def get_pg_connection():
         user=os.getenv("POSTGRES_USER", "fusiondex_user"),
         password=os.getenv("POSTGRES_PASSWORD", "fusiondex_password"),
     )
+
+
+@contextmanager
+def pg_connection() -> Iterator[psycopg2.extensions.connection]:
+    """Context manager around get_pg_connection.
+
+    Automatically rolls back on exception and always closes the connection.
+
+        with pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(...)
+            conn.commit()
+    """
+    conn = get_pg_connection()
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def get_engine():
