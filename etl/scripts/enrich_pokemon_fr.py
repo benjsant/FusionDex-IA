@@ -9,10 +9,10 @@ Idempotent : only updates rows where pokepedia_url IS NULL.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from etl.utils.db import pg_connection
+from etl.utils.io import load_json
 from etl.utils.logging import setup_logging
 
 LOGGER = setup_logging(__name__)
@@ -21,7 +21,7 @@ DATA_FILE = Path("data/pokepedia_names.json")
 
 
 def enrich_pokemon_pokepedia(conn) -> None:
-    entries: list[dict] = json.loads(DATA_FILE.read_text())
+    entries: list[dict] = load_json(DATA_FILE)
 
     # Build lookup: national_id → gen7_url
     by_national: dict[int, str] = {

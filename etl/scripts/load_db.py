@@ -30,12 +30,12 @@ Sources:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from psycopg2.extras import execute_values
 
 from etl.utils.db import pg_connection
+from etl.utils.io import load_json
 from etl.utils.logging import setup_logging
 from etl.utils.sql import load_id_map
 
@@ -49,7 +49,7 @@ IF_EVO_OVERRIDES_FILE = Path(__file__).parent / "data" / "if_evolution_overrides
 
 
 def _load_if_evolution_overrides() -> dict[tuple[str, str], list[dict]]:
-    entries = json.loads(IF_EVO_OVERRIDES_FILE.read_text())
+    entries = load_json(IF_EVO_OVERRIDES_FILE)
     return {(e["from"], e["into"]): e["conditions"] for e in entries}
 
 
@@ -398,13 +398,13 @@ def main() -> None:
         if not Path(path).exists():
             raise FileNotFoundError(f"{path} not found — run {script} first")
 
-    pokedex      = json.loads(Path("data/pokedex_if.json").read_text())
-    stats        = json.loads(Path("data/pokemon_stats.json").read_text())
-    moves        = json.loads(Path("data/moves_if.json").read_text())
-    tms          = json.loads(Path("data/tms_if.json").read_text())
-    abilities    = json.loads(Path("data/abilities_if.json").read_text())
-    movesets     = json.loads(Path("data/movesets_merged.json").read_text())
-    evolutions   = json.loads(Path("data/evolutions_base.json").read_text())
+    pokedex      = load_json(Path("data/pokedex_if.json"))
+    stats        = load_json(Path("data/pokemon_stats.json"))
+    moves        = load_json(Path("data/moves_if.json"))
+    tms          = load_json(Path("data/tms_if.json"))
+    abilities    = load_json(Path("data/abilities_if.json"))
+    movesets     = load_json(Path("data/movesets_merged.json"))
+    evolutions   = load_json(Path("data/evolutions_base.json"))
 
     LOGGER.info("Connecting to PostgreSQL...")
     with pg_connection() as conn:

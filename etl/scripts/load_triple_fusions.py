@@ -18,11 +18,11 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 from etl.utils.db import pg_connection
+from etl.utils.io import load_json
 from etl.utils.logging import setup_logging
 from etl.utils.sql import load_id_map
 
@@ -126,7 +126,7 @@ def seed_unique_if_types(cur, type_by_name: dict[str, int]) -> int:
 
 
 def load_triple_fusions(conn) -> None:
-    entries: list[dict] = json.loads(DATA_FILE.read_text())
+    entries: list[dict] = load_json(DATA_FILE)
     LOGGER.info("Loaded %d triple fusion entries from JSON", len(entries))
 
     pokemon_by_name = load_id_map(conn, "pokemon", lower=False)

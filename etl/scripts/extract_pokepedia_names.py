@@ -13,15 +13,15 @@ Output: data/pokepedia_names.json
 
 from __future__ import annotations
 
-import json
-
-from etl.utils.logging import setup_logging
 import re
 from pathlib import Path
 from urllib.parse import unquote
 
 import requests
 from lxml import html
+
+from etl.utils.io import save_json
+from etl.utils.logging import setup_logging
 
 LOGGER = setup_logging(__name__)
 
@@ -102,13 +102,11 @@ def parse_list(content: bytes) -> list[dict]:
 
 
 def main() -> None:
-    Path("data").mkdir(parents=True, exist_ok=True)
-
     LOGGER.info("Fetching Pokepedia Pokémon list...")
     content = fetch_page()
     entries = parse_list(content)
 
-    OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, entries)
     LOGGER.info("Saved %d entries → %s", len(entries), OUTPUT)
 
 

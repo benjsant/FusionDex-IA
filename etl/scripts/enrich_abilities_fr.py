@@ -10,9 +10,9 @@ Version priority for description: ultra-sun-ultra-moon > sun-moon > omega-ruby-a
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from etl.utils.io import load_json, save_json
 from etl.utils.logging import setup_logging
 from etl.utils.pokeapi import (
     enrich_items_parallel,
@@ -48,13 +48,13 @@ def _enrich_one(ability: dict) -> tuple[dict, str | None, str | None]:
 
 
 def main() -> None:
-    abilities: list[dict] = json.loads(DATA_FILE.read_text())
+    abilities: list[dict] = load_json(DATA_FILE)
 
     to_enrich = [a for a in abilities if a.get("name_fr") is None]
     LOGGER.info("%d abilities à enrichir (sur %d)", len(to_enrich), len(abilities))
 
     def save() -> None:
-        DATA_FILE.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
+        save_json(DATA_FILE, abilities)
 
     found, not_found = enrich_items_parallel(
         to_enrich,

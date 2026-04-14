@@ -29,10 +29,10 @@ Structure per entry:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
+from etl.utils.io import save_json
 from etl.utils.logging import setup_logging
 from etl.utils.wikitext import fetch_wikitext
 
@@ -148,11 +148,10 @@ def parse_triple_fusions(wikitext: str) -> list[dict]:
 
 
 def main() -> None:
-    Path("data").mkdir(parents=True, exist_ok=True)
     LOGGER.info("Fetching Triple_Fusions from IF wiki...")
     wikitext = fetch_wikitext("Triple_Fusions")
     fusions  = parse_triple_fusions(wikitext)
-    OUTPUT.write_text(json.dumps(fusions, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, fusions)
     LOGGER.info("Saved %d triple fusions → %s", len(fusions), OUTPUT)
 
 

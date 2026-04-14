@@ -14,11 +14,11 @@ Output: data/pokedex_if.json
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from pathlib import Path
 
+from etl.utils.io import save_json
 from etl.utils.logging import setup_logging
 from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
@@ -112,12 +112,11 @@ def parse_entries(wikitext: str) -> list[dict]:
 
 
 def main() -> None:
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     LOGGER.info("Fetching Pokédex wikitext from Infinite Fusion wiki...")
     wikitext = fetch_wikitext("Pokédex")
     entries  = parse_entries(wikitext)
 
-    OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, entries)
     LOGGER.info("Saved %d entries → %s", len(entries), OUTPUT)
 
 

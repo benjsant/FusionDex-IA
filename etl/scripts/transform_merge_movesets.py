@@ -24,10 +24,10 @@ Output:
 
 from __future__ import annotations
 
-import json
-
-from etl.utils.logging import setup_logging
 from pathlib import Path
+
+from etl.utils.io import load_json, save_json
+from etl.utils.logging import setup_logging
 
 LOGGER = setup_logging(__name__)
 
@@ -127,11 +127,11 @@ def main() -> None:
         if not f.exists():
             raise FileNotFoundError(f"{f} not found — run prior ETL steps first")
 
-    base_movesets  : list[dict] = json.loads(IN_MOVESETS.read_text())
-    tms_if         : list[dict] = json.loads(IN_TMS.read_text())
-    tutors_if      : list[dict] = json.loads(IN_TUTORS.read_text())
-    expert_tutors  : list[dict] = json.loads(IN_EXPERT_TUTORS.read_text()) if IN_EXPERT_TUTORS.exists() else []
-    moves_if       : list[dict] = json.loads(IN_MOVES.read_text())
+    base_movesets  : list[dict] = load_json(IN_MOVESETS)
+    tms_if         : list[dict] = load_json(IN_TMS)
+    tutors_if      : list[dict] = load_json(IN_TUTORS)
+    expert_tutors  : list[dict] = load_json(IN_EXPERT_TUTORS) if IN_EXPERT_TUTORS.exists() else []
+    moves_if       : list[dict] = load_json(IN_MOVES)
 
     en_to_fr = build_name_en_to_fr(moves_if)
     fr_to_en = build_name_fr_to_en(moves_if)
@@ -272,7 +272,7 @@ def main() -> None:
 
     merged.sort(key=lambda r: (r["pokemon_if_id"], r["method"], r.get("level") or 0))
 
-    OUTPUT.write_text(json.dumps(merged, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, merged)
     LOGGER.info(
         "Merged %d records (%d base + %d IF overrides) → %s",
         len(merged), len(base_movesets), override_count, OUTPUT,

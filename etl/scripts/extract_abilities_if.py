@@ -11,10 +11,10 @@ Output: data/abilities_if.json
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
+from etl.utils.io import save_json
 from etl.utils.logging import setup_logging
 from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
@@ -110,13 +110,11 @@ def parse_abilities(wikitext: str) -> list[dict]:
 
 
 def main() -> None:
-    Path("data").mkdir(parents=True, exist_ok=True)
-
     LOGGER.info("Fetching List of Abilities from wiki...")
     wikitext  = fetch_wikitext("List of Abilities")
     abilities = parse_abilities(wikitext)
 
-    OUTPUT.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, abilities)
     LOGGER.info("Saved %d abilities → %s", len(abilities), OUTPUT)
 
 

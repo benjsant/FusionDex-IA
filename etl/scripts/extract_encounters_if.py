@@ -26,10 +26,10 @@ Wild_Encounters doesn't reference them anyway).
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
+from etl.utils.io import save_json
 from etl.utils.logging import setup_logging
 from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
@@ -268,8 +268,6 @@ def parse_legendary_encounters(wikitext: str) -> list[dict]:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    Path("data").mkdir(parents=True, exist_ok=True)
-
     LOGGER.info("Fetching Wild_Encounters...")
     wild_wt  = fetch_wikitext("Wild_Encounters")
     wild     = parse_wild_encounters(wild_wt)
@@ -288,7 +286,7 @@ def main() -> None:
     all_entries = wild + static + legendaries
     LOGGER.info("Total: %d encounter entries", len(all_entries))
 
-    OUTPUT.write_text(json.dumps(all_entries, ensure_ascii=False, indent=2))
+    save_json(OUTPUT, all_entries)
     LOGGER.info("Saved → %s", OUTPUT)
 
 

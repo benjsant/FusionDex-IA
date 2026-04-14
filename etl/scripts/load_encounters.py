@@ -11,13 +11,13 @@ Name→ID resolution:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 import psycopg2
 
 from etl.utils.db import pg_connection
+from etl.utils.io import load_json
 from etl.utils.logging import setup_logging
 from etl.utils.sql import load_id_map
 
@@ -30,7 +30,7 @@ VALID_METHODS = {"wild", "gift", "trade", "static", "fishing", "headbutt"}
 
 
 def load_encounters(conn) -> None:
-    entries: list[dict] = json.loads(DATA_FILE.read_text())
+    entries: list[dict] = load_json(DATA_FILE)
     LOGGER.info("Loaded %d encounter entries", len(entries))
 
     with conn.cursor() as cur:
