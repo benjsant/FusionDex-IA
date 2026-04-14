@@ -1,0 +1,72 @@
+"""Tests for /fusion routes."""
+
+from fastapi.testclient import TestClient
+
+
+def test_fusion_bulba_charmander(client: TestClient) -> None:
+    r = client.get("/fusion/1/4")
+    assert r.status_code == 200
+    f = r.json()
+    assert f["head_name_en"] == "Bulbasaur"
+    assert f["body_name_en"] == "Charmander"
+    assert f["type1"]["name_en"] == "Grass"
+    assert f["type2"]["name_en"] == "Fire"
+    assert f["sprite_path"] == "1.4.png"
+    # Physical: body*2/3 + head*1/3 — Charmander HP=39, Bulbasaur HP=45
+    # floor(39*2/3 + 45/3) = floor(26 + 15) = 41
+    assert f["hp"] == 41
+
+
+def test_fusion_not_found(client: TestClient) -> None:
+    r = client.get("/fusion/9999/1")
+    assert r.status_code == 404
+
+
+def test_fusion_same_type_drops_type2(client: TestClient) -> None:
+    # Bulbasaur + Bulbasaur → both Grass → type2 dropped
+    r = client.get("/fusion/1/1")
+    assert r.status_code == 200
+    assert r.json()["type2"] is None
+
+
+def test_fusion_moves_origin_split(client: TestClient) -> None:
+    r = client.get("/fusion/1/4/moves")
+    assert r.status_code == 200
+    moves = r.json()
+    origins = {m["origin"] for m in moves}
+    assert origins <= {"head", "body", "both"}
+    assert "head" in origins and "body" in origins
+
+
+def test_fusion_moves_deduped(client: TestClient) -> None:
+    r = client.get("/fusion/1/4/moves")
+    move_ids = [m["move_id"] for m in r.json()]
+    assert len(move_ids) == len(set(move_ids)), "moves must be deduped by move_id"
+
+
+def test_fusion_abilities_combine(client: TestClient) -> None:
+    r = client.get("/fusion/1/4/abilities")
+    assert r.status_code == 200
+    names = {a["name_en"] for a in r.json()}
+    # Head=Bulbasaur → Overgrow, Body=Charmander → Blaze
+    assert "Overgrow" in names
+    assert "Blaze" in names
+    # Both have hidden abilities
+    assert any(a["is_hidden"] for a in r.json())
+
+
+def test_fusion_weaknesses(client: TestClient) -> None:
+    # Grass/Fire fusion
+    r = client.get("/fusion/1/4/weaknesses")
+    assert r.status_code == 200
+    data = {w["attacking_type_name_en"]: float(w["multiplier"]) for w in r.json()}
+    # Grass/Fire is 2x weak to Flying, Poison, Rock, Ground
+    assert data.get("Flying") == 2.0
+
+
+def test_fusion_random(client: TestClient) -> None:
+    r = client.get("/fusion/random")
+    assert r.status_code == 200
+    f = r.json()
+    assert "head_name_en" in f and "body_name_en" in f
+    assert "sprite_path" in f
