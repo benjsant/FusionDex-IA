@@ -30,14 +30,12 @@ import json
 import re
 from pathlib import Path
 
-from etl.utils.http import get_json
-
 from etl.utils.logging import setup_logging
+from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
 LOGGER = setup_logging(__name__)
 
-WIKI_API = "https://infinitefusion.fandom.com/api.php"
-OUTPUT   = Path("data/encounters_if.json")
+OUTPUT = Path("data/encounters_if.json")
 
 # EncounterTable/Section → DB method
 SECTION_TO_METHOD = {
@@ -56,20 +54,7 @@ SECTION_TO_METHOD = {
 HOENN_ONLY_NATIONAL = set(range(252, 387))  # not actually excluded from wild, just a safeguard
 
 
-def fetch_wikitext(page: str) -> str:
-    data = get_json(WIKI_API, params={
-        "action": "parse", "page": page, "prop": "wikitext", "format": "json",
-    })
-    if not data or "parse" not in data:
-        raise RuntimeError(f"Failed to fetch {page}")
-    return data["parse"]["wikitext"]["*"]
-
-
-def clean_wikilinks(text: str) -> str:
-    text = re.sub(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", text)
-    text = re.sub(r"'''?([^']+)'''?", r"\1", text)
-    text = re.sub(r"<[^>]+>", "", text)
-    return text.strip()
+clean_wikilinks = clean_wikitext
 
 
 # ── Wild Encounters ───────────────────────────────────────────────────────────

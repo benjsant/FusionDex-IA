@@ -19,14 +19,12 @@ import re
 import time
 from pathlib import Path
 
-from etl.utils.http import get_json
-
 from etl.utils.logging import setup_logging
+from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
 LOGGER = setup_logging(__name__)
 
-WIKI_API = "https://infinitefusion.fandom.com/api.php"
-OUTPUT   = Path("data/pokedex_if.json")
+OUTPUT = Path("data/pokedex_if.json")
 
 # Template pattern inside wikitext:
 # {{PokedexTable/Data|index|id|name|type1|type2|location|notes}}
@@ -66,26 +64,6 @@ def detect_generation(index: int) -> int:
         if start <= index <= end:
             return gen
     return 3
-
-
-def clean_wikitext(text: str) -> str:
-    """Strip wiki markup links like [[Name]] or [[Name|Display]]."""
-    text = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]*)\]\]", r"\1", text)
-    text = re.sub(r"'''?([^']+)'''?", r"\1", text)
-    return text.strip()
-
-
-def fetch_wikitext() -> str:
-    LOGGER.info("Fetching Pokédex wikitext from Infinite Fusion wiki...")
-    data = get_json(WIKI_API, params={
-        "action": "parse",
-        "page": "Pokédex",
-        "prop": "wikitext",
-        "format": "json",
-    })
-    if not data:
-        raise RuntimeError("Failed to fetch Pokédex page from wiki")
-    return data["parse"]["wikitext"]["*"]
 
 
 def parse_entries(wikitext: str) -> list[dict]:
@@ -135,7 +113,8 @@ def parse_entries(wikitext: str) -> list[dict]:
 
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    wikitext = fetch_wikitext()
+    LOGGER.info("Fetching Pokédex wikitext from Infinite Fusion wiki...")
+    wikitext = fetch_wikitext("Pokédex")
     entries  = parse_entries(wikitext)
 
     OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, indent=2))

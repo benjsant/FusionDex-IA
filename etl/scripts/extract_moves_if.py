@@ -19,13 +19,11 @@ import json
 import re
 from pathlib import Path
 
-from etl.utils.http import get_json
-
 from etl.utils.logging import setup_logging
+from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
 LOGGER = setup_logging(__name__)
 
-WIKI_API          = "https://infinitefusion.fandom.com/api.php"
 OUT_MOVES         = Path("data/moves_if.json")
 OUT_TMS           = Path("data/tms_if.json")
 OUT_TUTORS        = Path("data/tutors_if.json")
@@ -37,31 +35,11 @@ TYPE_HEADER_RE = re.compile(r"^==\s*([A-Za-z]+(?:/[A-Za-z]+)?)-type(?:\s+moves)?
 # Row separator
 ROW_SEP_RE = re.compile(r"^\|-", re.MULTILINE)
 
-# data-sort-value="Attack Order" | [[...|Attack Order]]  OR  | Attack Order
-CELL_NAME_RE  = re.compile(r'data-sort-value="([^"]+)"')
-WIKILINK_RE   = re.compile(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]")
 SORTVAL_RE    = re.compile(r'data-sort-value="([^"]*)"')
 
 
-def fetch_wikitext(page: str) -> str:
-    data = get_json(WIKI_API, params={
-        "action": "parse",
-        "page":   page,
-        "prop":   "wikitext",
-        "format": "json",
-    })
-    if not data:
-        raise RuntimeError(f"Failed to fetch wiki page: {page}")
-    return data["parse"]["wikitext"]["*"]
-
-
 def clean(text: str) -> str:
-    """Strip wikitext markup and HTML tags."""
-    text = WIKILINK_RE.sub(r"\1", text)
-    text = re.sub(r"'''?([^']+)'''?", r"\1", text)
-    text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"\{\{[^}]+\}\}", "", text)
-    return text.strip()
+    return clean_wikitext(text, strip_templates=True)
 
 
 def parse_cell(raw: str) -> str:

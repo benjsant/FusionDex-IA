@@ -15,25 +15,17 @@ import json
 import re
 from pathlib import Path
 
-from etl.utils.http import get_json
-
 from etl.utils.logging import setup_logging
+from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
 LOGGER = setup_logging(__name__)
 
-WIKI_API = "https://infinitefusion.fandom.com/api.php"
-OUTPUT   = Path("data/abilities_if.json")
+OUTPUT = Path("data/abilities_if.json")
 
-WIKILINK_RE = re.compile(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]")
 HIDDEN_RE   = re.compile(r"'''''\s*(.+?)\s*'''''")
 BULLET_RE   = re.compile(r"^\*\s*(.+)$", re.MULTILINE)
 
-
-def clean(text: str) -> str:
-    text = WIKILINK_RE.sub(r"\1", text)
-    text = re.sub(r"'''?([^']+)'''?", r"\1", text)
-    text = re.sub(r"<[^>]+>", "", text)
-    return text.strip()
+clean = clean_wikitext
 
 
 def parse_pokemon_block(block: str) -> list[dict]:
@@ -117,23 +109,11 @@ def parse_abilities(wikitext: str) -> list[dict]:
     return abilities
 
 
-def fetch_wikitext() -> str:
-    data = get_json(WIKI_API, params={
-        "action": "parse",
-        "page": "List of Abilities",
-        "prop": "wikitext",
-        "format": "json",
-    })
-    if not data:
-        raise RuntimeError("Failed to fetch List of Abilities")
-    return data["parse"]["wikitext"]["*"]
-
-
 def main() -> None:
     Path("data").mkdir(parents=True, exist_ok=True)
 
     LOGGER.info("Fetching List of Abilities from wiki...")
-    wikitext  = fetch_wikitext()
+    wikitext  = fetch_wikitext("List of Abilities")
     abilities = parse_abilities(wikitext)
 
     OUTPUT.write_text(json.dumps(abilities, ensure_ascii=False, indent=2))
