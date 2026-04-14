@@ -21,9 +21,6 @@ URLs (pif-downloadables/Settings.rb) :
 from __future__ import annotations
 
 import io
-import json
-
-from etl.utils.logging import setup_logging
 import re
 import sys
 import time
@@ -32,6 +29,9 @@ from pathlib import Path
 
 import requests
 from PIL import Image
+
+from etl.utils.io import load_json
+from etl.utils.logging import setup_logging
 
 LOGGER = setup_logging(__name__)
 
@@ -67,7 +67,7 @@ def load_if_ids() -> set[int]:
             "pokedex_if.json not found — no ID filter applied (run extract_pokedex_if.py first)"
         )
         return set()
-    entries = json.loads(POKEDEX_IF.read_text())
+    entries = load_json(POKEDEX_IF)
     ids = {e["if_id"] for e in entries}
     LOGGER.info("Loaded %d IF Pokémon IDs from pokedex_if.json", len(ids))
     return ids

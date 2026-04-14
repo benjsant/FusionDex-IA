@@ -15,17 +15,15 @@ Output: data/moves_if.json, data/tms_if.json, data/tutors_if.json
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
-from etl.utils.http import get_json
-
+from etl.utils.io import save_json
 from etl.utils.logging import setup_logging
+from etl.utils.wikitext import clean_wikitext, fetch_wikitext
 
 LOGGER = setup_logging(__name__)
 
-WIKI_API          = "https://infinitefusion.fandom.com/api.php"
 OUT_MOVES         = Path("data/moves_if.json")
 OUT_TMS           = Path("data/tms_if.json")
 OUT_TUTORS        = Path("data/tutors_if.json")
@@ -37,31 +35,11 @@ TYPE_HEADER_RE = re.compile(r"^==\s*([A-Za-z]+(?:/[A-Za-z]+)?)-type(?:\s+moves)?
 # Row separator
 ROW_SEP_RE = re.compile(r"^\|-", re.MULTILINE)
 
-# data-sort-value="Attack Order" | [[...|Attack Order]]  OR  | Attack Order
-CELL_NAME_RE  = re.compile(r'data-sort-value="([^"]+)"')
-WIKILINK_RE   = re.compile(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]")
 SORTVAL_RE    = re.compile(r'data-sort-value="([^"]*)"')
 
 
-def fetch_wikitext(page: str) -> str:
-    data = get_json(WIKI_API, params={
-        "action": "parse",
-        "page":   page,
-        "prop":   "wikitext",
-        "format": "json",
-    })
-    if not data:
-        raise RuntimeError(f"Failed to fetch wiki page: {page}")
-    return data["parse"]["wikitext"]["*"]
-
-
 def clean(text: str) -> str:
-    """Strip wikitext markup and HTML tags."""
-    text = WIKILINK_RE.sub(r"\1", text)
-    text = re.sub(r"'''?([^']+)'''?", r"\1", text)
-    text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"\{\{[^}]+\}\}", "", text)
-    return text.strip()
+    return clean_wikitext(text, strip_templates=True)
 
 
 def parse_cell(raw: str) -> str:
@@ -285,16 +263,14 @@ def extract_expert_tutors(wikitext: str) -> list[dict]:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    Path("data").mkdir(parents=True, exist_ok=True)
-
     LOGGER.info("Fetching List of Moves from IF wiki...")
     moves = extract_moves(fetch_wikitext("List_of_Moves"))
-    OUT_MOVES.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
+    save_json(OUT_MOVES, moves)
     LOGGER.info("Saved %d moves → %s", len(moves), OUT_MOVES)
 
     LOGGER.info("Fetching List of TMs from IF wiki...")
     tms = extract_tms(fetch_wikitext("List_of_TMs"))
-    OUT_TMS.write_text(json.dumps(tms, ensure_ascii=False, indent=2))
+    save_json(OUT_TMS, tms)
     LOGGER.info("Saved %d TMs → %s", len(tms), OUT_TMS)
 
     LOGGER.info("Fetching List of Tutors from IF wiki...")
@@ -303,7 +279,7 @@ def main() -> None:
     except Exception:
         tutors = []
         LOGGER.warning("List of Tutors non disponible — skipped")
-    OUT_TUTORS.write_text(json.dumps(tutors, ensure_ascii=False, indent=2))
+    save_json(OUT_TUTORS, tutors)
     LOGGER.info("Saved %d tutors → %s", len(tutors), OUT_TUTORS)
 
     LOGGER.info("Fetching List of Move Expert Moves from IF wiki...")
@@ -312,7 +288,7 @@ def main() -> None:
     except Exception:
         expert_tutors = []
         LOGGER.warning("List_of_Move_Expert_Moves non disponible — skipped")
-    OUT_EXPERT_TUTORS.write_text(json.dumps(expert_tutors, ensure_ascii=False, indent=2))
+    save_json(OUT_EXPERT_TUTORS, expert_tutors)
     LOGGER.info("Saved %d expert tutor moves → %s", len(expert_tutors), OUT_EXPERT_TUTORS)
 
 

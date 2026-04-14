@@ -13,9 +13,9 @@ Output: data/moves_if.json (modifié in-place avec name_fr)
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from etl.utils.io import load_json, save_json
 from etl.utils.logging import setup_logging
 from etl.utils.pokeapi import (
     enrich_items_parallel,
@@ -82,12 +82,12 @@ def main() -> None:
     if not MOVES_FILE.exists():
         raise FileNotFoundError("data/moves_if.json not found — run extract_moves_if.py first")
 
-    moves = json.loads(MOVES_FILE.read_text())
+    moves = load_json(MOVES_FILE)
     to_enrich = [m for m in moves if not m.get("name_fr") or not m.get("description_fr")]
     LOGGER.info("%d moves à enrichir en FR (sur %d)", len(to_enrich), len(moves))
 
     def save() -> None:
-        MOVES_FILE.write_text(json.dumps(moves, ensure_ascii=False, indent=2))
+        save_json(MOVES_FILE, moves)
 
     found, not_found = enrich_items_parallel(
         to_enrich,

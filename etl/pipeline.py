@@ -176,6 +176,12 @@ def main(force: bool = False) -> None:
         "Step 8b/10 — Fix Pokémon types from PokeAPI",
     )
 
+    # Step 8c — Inherit moves from pre-evolutions (Charizard ← Charmeleon ← Charmander)
+    run(
+        ["python", str(SCRIPTS_DIR / "enrich_evolution_movesets.py")],
+        "Step 8c/10 — Inherit moves from pre-evolutions",
+    )
+
     # Step 9 — Seed types FR + type effectiveness (après load_db pour DO UPDATE name_fr)
     run(
         ["python", str(SCRIPTS_DIR / "seed_type_effectiveness.py")],

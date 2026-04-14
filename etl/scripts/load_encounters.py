@@ -11,14 +11,15 @@ Name→ID resolution:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 import psycopg2
 
 from etl.utils.db import pg_connection
+from etl.utils.io import load_json
 from etl.utils.logging import setup_logging
+from etl.utils.sql import load_id_map
 
 LOGGER = setup_logging(__name__)
 
@@ -29,7 +30,7 @@ VALID_METHODS = {"wild", "gift", "trade", "static", "fishing", "headbutt"}
 
 
 def load_encounters(conn) -> None:
-    entries: list[dict] = json.loads(DATA_FILE.read_text())
+    entries: list[dict] = load_json(DATA_FILE)
     LOGGER.info("Loaded %d encounter entries", len(entries))
 
     with conn.cursor() as cur:
@@ -51,8 +52,7 @@ def load_encounters(conn) -> None:
             )
         conn.commit()
 
-        cur.execute("SELECT id, name_en FROM location")
-        loc_map: dict[str, int] = {name: db_id for db_id, name in cur.fetchall()}
+        loc_map = load_id_map(conn, "location", lower=False)
         LOGGER.info("Locations: %d", len(loc_map))
 
         # ── Insert pokemon_location ───────────────────────────────────────────

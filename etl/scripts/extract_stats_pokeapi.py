@@ -17,13 +17,12 @@ Output: data/pokemon_stats.json, data/evolutions_base.json
 
 from __future__ import annotations
 
-import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from etl.utils.http import get_json
-
+from etl.utils.io import load_json, save_json
 from etl.utils.logging import setup_logging
 
 LOGGER = setup_logging(__name__)
@@ -175,7 +174,7 @@ def main() -> None:
     if not INPUT_FILE.exists():
         raise FileNotFoundError(f"{INPUT_FILE} not found — run extract_pokedex_if.py first")
 
-    entries = json.loads(INPUT_FILE.read_text())
+    entries = load_json(INPUT_FILE)
     LOGGER.info("Enriching %d Pokémon via PokeAPI (threads=%d)...", len(entries), MAX_WORKERS)
 
     all_stats:  list[dict] = []
@@ -196,8 +195,8 @@ def main() -> None:
 
     all_stats.sort(key=lambda x: x["if_id"])
 
-    OUTPUT_STATS.write_text(json.dumps(all_stats, ensure_ascii=False, indent=2))
-    OUTPUT_EVOS.write_text(json.dumps(all_evos,  ensure_ascii=False, indent=2))
+    save_json(OUTPUT_STATS, all_stats)
+    save_json(OUTPUT_EVOS,  all_evos)
 
     LOGGER.info("Saved %d stat records → %s", len(all_stats), OUTPUT_STATS)
     LOGGER.info("Saved %d evolutions   → %s", len(all_evos),  OUTPUT_EVOS)
