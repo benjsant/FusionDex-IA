@@ -53,3 +53,14 @@ class FusionResult(BaseModel):
     type2: TypeOut | None
     # Sprite path pattern: "{head_id}.{body_id}.png"
     sprite_path: str
+
+
+class FusionInvolvingOut(BaseModel):
+    head_id: int
+    body_id: int
+    role: str  # 'head' | 'body' — role of the queried Pokémon
+    partner_id: int
+    partner_name_en: str | None
+    partner_name_fr: str | None
+
+    model_config = {"from_attributes": True}

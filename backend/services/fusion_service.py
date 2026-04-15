@@ -160,6 +160,44 @@ def compute_fusion_abilities(db: Session, head: Pokemon, body: Pokemon) -> list[
     return result
 
 
+def list_fusions_involving(
+    db: Session, pokemon_id: int, *, limit: int | None = None, offset: int = 0
+) -> list[dict]:
+    """All fusions where this Pokémon is head OR body.
+
+    Uses `fusion_sprite` as the canonical source (one row per sprite variant).
+    We collapse to one row per (head_id, body_id) pair.
+    """
+    from backend.db.models import FusionSprite
+
+    pairs = (
+        db.query(FusionSprite.head_id, FusionSprite.body_id)
+        .filter((FusionSprite.head_id == pokemon_id) | (FusionSprite.body_id == pokemon_id))
+        .distinct()
+        .order_by(FusionSprite.head_id, FusionSprite.body_id)
+    )
+    if limit is not None:
+        pairs = pairs.limit(limit)
+    pairs = pairs.offset(offset)
+
+    partner_ids = set()
+    rows = []
+    for h, b in pairs.all():
+        partner_id = b if h == pokemon_id else h
+        role = "head" if h == pokemon_id else "body"
+        partner_ids.add(partner_id)
+        rows.append({"head_id": h, "body_id": b, "role": role, "partner_id": partner_id})
+
+    names = {
+        p.id: (p.name_en, p.name_fr)
+        for p in db.query(Pokemon).filter(Pokemon.id.in_(partner_ids)).all()
+    }
+    for r in rows:
+        n = names.get(r["partner_id"], (None, None))
+        r["partner_name_en"], r["partner_name_fr"] = n
+    return rows
+
+
 def random_fusion_ids(db: Session) -> tuple[int, int]:
     """Pick two random Pokémon IDs for a random fusion."""
     ids = [pid for (pid,) in db.query(Pokemon.id).all()]

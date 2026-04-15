@@ -9,10 +9,13 @@ import backend.db.models  # noqa: F401
 from backend.routes import (
     ability_route,
     ai_route,
+    creator_route,
     fusion_route,
+    generation_route,
     move_route,
     pokemon_route,
     sprite_route,
+    stats_route,
     triple_fusion_route,
     type_route,
 )
@@ -44,6 +47,10 @@ app.include_router(move_route.router)
 app.include_router(ability_route.router)
 app.include_router(type_route.router)
 app.include_router(fusion_route.router)
+app.include_router(fusion_route.plural_router)
+app.include_router(generation_route.router)
+app.include_router(creator_route.router)
 app.include_router(sprite_route.router)
 app.include_router(triple_fusion_route.router)
+app.include_router(stats_route.router)
 app.include_router(ai_route.router)

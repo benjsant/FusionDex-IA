@@ -1,0 +1,45 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  smoke:
+    name: Import + lightweight tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.10.x"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend deps
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Verify app imports (pytest collect)
+        working-directory: backend
+        run: uv run pytest --collect-only -q
+
+      - name: Run DB-free tests
+        working-directory: backend
+        run: uv run pytest tests/test_ai.py -v
+
+  # Full pytest suite requires a populated DB (572 Pokémon dataset from ETL).
+  # To enable, commit a SQL fixture dump under e.g. backend/tests/fixtures/
+  # and wire a postgres service + psql restore step here.
