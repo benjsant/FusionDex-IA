@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+import os
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -24,6 +26,9 @@ async def ask_ai(request: AiRequest):
     Le frontend consomme cette réponse avec `fetch` + `ReadableStream`
     ou via `EventSource`.
     """
+    if not os.getenv("DEEPSEEK_API_KEY"):
+        raise HTTPException(status_code=503, detail="AI service not configured (DEEPSEEK_API_KEY missing)")
+
     async def token_generator():
         async for token in stream_ai_response(request.message, request.context):
             yield token

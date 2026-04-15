@@ -22,6 +22,18 @@ def test_sprites_unknown_pair_returns_empty(client: TestClient) -> None:
     assert r.json() == []
 
 
+def test_sprite_image_served(client: TestClient) -> None:
+    r = client.get("/sprites/1/4/image")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_sprite_image_missing(client: TestClient) -> None:
+    r = client.get("/sprites/9999/9999/image")
+    assert r.status_code == 404
+
+
 def test_triple_fusions_list(client: TestClient) -> None:
     r = client.get("/triple-fusions/")
     assert r.status_code == 200

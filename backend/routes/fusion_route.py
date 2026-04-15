@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
-from backend.schemas.fusion import FusionAbilityOut, FusionMoveOut, FusionResult
+from backend.routes.deps import get_pokemon_or_404
+from backend.db.models import Pokemon
+from backend.schemas.fusion import (
+    FusionAbilityOut,
+    FusionInvolvingOut,
+    FusionMoveOut,
+    FusionResult,
+)
 from backend.schemas.type_ import TypeOut
 from backend.schemas.weakness import WeaknessOut
 from backend.services.fusion_service import (
@@ -15,10 +22,24 @@ from backend.services.fusion_service import (
     compute_fusion_abilities,
     compute_fusion_moves,
     compute_fusion_weaknesses,
+    list_fusions_involving,
     random_fusion_ids,
 )
 
 router = APIRouter(prefix="/fusion", tags=["Fusion"])
+plural_router = APIRouter(prefix="/fusions", tags=["Fusion"])
+
+
+@plural_router.get("/involving/{pokemon_id}", response_model=list[FusionInvolvingOut])
+def get_fusions_involving(
+    p: Pokemon = Depends(get_pokemon_or_404),
+    db: Session = Depends(get_db),
+    limit: int | None = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+):
+    """Toutes les paires de fusion (head OU body) impliquant ce Pokémon."""
+    rows = list_fusions_involving(db, p.id, limit=limit, offset=offset)
+    return [FusionInvolvingOut(**r) for r in rows]
 
 
 def _to_type_out(t) -> TypeOut | None:

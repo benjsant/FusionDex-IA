@@ -63,8 +63,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fusiondex_db}
       POSTGRES_USER: ${POSTGRES_USER:-fusiondex_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusiondex_password}
+      SPRITES_DIR: /app/data/sprites
     volumes:
       - ./backend:/app/backend
+      - ./data/sprites:/app/data/sprites:ro
     ports:
       - "8000:8000"
     networks:
