@@ -61,8 +61,10 @@ En dev hors Docker, le proxy `/api/*` cible `BACKEND_INTERNAL_URL=http://localho
 
 ```bash
 uv sync --group docs
-uv run mkdocs serve     # http://127.0.0.1:8000
+uv run mkdocs serve     # http://127.0.0.1:58100
 ```
+
+Le port `58100` suit la convention préfixe-5 (famille backend / dev-tooling). Surcharge ponctuelle : `uv run mkdocs serve -a 127.0.0.1:<port>`.
 
 ## Configuration
 
@@ -76,6 +78,8 @@ FUSIONDEX_BACKEND_PORT=58000
 FUSIONDEX_SPRITES_PORT=58080
 FUSIONDEX_DB_PORT=55432
 ```
+
+Le serveur MkDocs (dev-tooling) est fixé à `58100` dans `mkdocs.yml`.
 
 ### CORS
 
