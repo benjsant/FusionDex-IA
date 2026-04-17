@@ -149,6 +149,8 @@ def get_evolutions_for_pokemon(
         EvolutionOut(
             id=r.id,
             pokemon_id=r.pokemon_id,
+            pokemon_name_en=r.pokemon.name_en if r.pokemon else None,
+            pokemon_name_fr=r.pokemon.name_fr if r.pokemon else None,
             evolves_into_id=r.evolves_into_id,
             evolves_into_name_en=r.evolves_into.name_en,
             evolves_into_name_fr=r.evolves_into.name_fr,

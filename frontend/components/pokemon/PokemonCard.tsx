@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { PokemonListItem } from "@/types/api";
 import { TypeBadge } from "./TypeBadge";
-import { SPRITES_BASE_URL } from "@/lib/constants";
+import { basePokemonSprite } from "@/lib/constants";
 import { primaryType, secondaryType } from "@/lib/utils";
 
 interface PokemonCardProps {
@@ -10,7 +10,7 @@ interface PokemonCardProps {
 }
 
 export function PokemonCard({ pokemon }: PokemonCardProps) {
-  const spriteUrl = `${SPRITES_BASE_URL}/sprites/${pokemon.id}.${pokemon.id}.png`;
+  const spriteUrl = basePokemonSprite(pokemon.national_id ?? pokemon.id);
   const t1 = primaryType(pokemon.types);
   const t2 = secondaryType(pokemon.types);
 

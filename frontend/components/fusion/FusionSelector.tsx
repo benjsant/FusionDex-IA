@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/layout/SearchBar";
 import { usePokemonSearch, usePokemonList } from "@/hooks/usePokemon";
 import { TypeBadge } from "@/components/pokemon/TypeBadge";
 import type { PokemonListItem } from "@/types/api";
-import { SPRITES_BASE_URL } from "@/lib/constants";
+import { basePokemonSprite } from "@/lib/constants";
 import { primaryType, secondaryType } from "@/lib/utils";
 import Image from "next/image";
 
@@ -51,7 +51,7 @@ function PokemonPicker({ label, selected, onSelect }: PokemonPickerProps) {
           onClick={() => setOpen(!open)}
         >
           <Image
-            src={`${SPRITES_BASE_URL}/sprites/${selected.id}.${selected.id}.png`}
+            src={basePokemonSprite(selected.national_id ?? selected.id)}
             alt={selected.name_en}
             width={48}
             height={48}
