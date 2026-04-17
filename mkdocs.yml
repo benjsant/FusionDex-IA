@@ -4,6 +4,10 @@ site_url: https://fusiondex-ia.local/
 repo_name: FusionDex-IA
 docs_dir: docs
 
+# Convention "préfixe 5" du projet — la doc est classée dev-tooling backend.
+# Override ponctuel : `uv run mkdocs serve -a 127.0.0.1:<port>`
+dev_addr: 127.0.0.1:58100
+
 theme:
   name: material
   language: fr
