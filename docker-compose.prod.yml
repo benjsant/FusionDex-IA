@@ -1,0 +1,33 @@
+# Override pour la prod / démo publique.
+#
+# Usage :
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Effet : seul le service `frontend` a un port mappé sur l'hôte. Backend,
+# sprites (nginx) et Postgres ne sont joignables que via le réseau Docker
+# interne. Le browser passe par Next.js (`/api/*`, `/sprites-cdn/*`) qui
+# proxifie en server-to-server.
+#
+# Prérequis : un `.env.prod` avec au minimum
+#   POSTGRES_PASSWORD=<solide>
+#   CORS_ALLOWED_ORIGINS=https://<ton-domaine>
+#   FUSIONDEX_FRONTEND_PORT=<port public, ex: 443 derrière un reverse proxy>
+
+services:
+  db:
+    ports: !reset []     # pas d'exposition externe en prod
+
+  backend:
+    ports: !reset []     # uniquement accessible via le réseau Docker
+    environment:
+      # Défense en profondeur : en prod, on n'autorise que le domaine public.
+      # À surcharger via `.env.prod` → CORS_ALLOWED_ORIGINS=https://…
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+
+  sprites:
+    ports: !reset []     # servi via le proxy Next.js (/sprites-cdn/*)
+
+  frontend:
+    # Seul service public. Mappage configurable via .env.
+    ports:
+      - "${FUSIONDEX_FRONTEND_PORT:-53000}:3000"
