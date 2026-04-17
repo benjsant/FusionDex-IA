@@ -1,13 +1,12 @@
 "use client";
 
 import { use } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useFusion } from "@/hooks/useFusion";
 import { TypeBadge } from "@/components/pokemon/TypeBadge";
 import { StatBar } from "@/components/pokemon/StatBar";
 import { AiSuggestButton } from "@/components/ai/AiSuggestButton";
-import { SPRITES_BASE_URL } from "@/lib/constants";
+import { FusionSprite } from "@/components/fusion/FusionSprite";
 
 export default function FusionResultPage({
   params,
@@ -40,7 +39,6 @@ export default function FusionResultPage({
     );
   }
 
-  const spriteUrl = `${SPRITES_BASE_URL}/sprites/${hId}.${bId}.png`;
   const fusionName = `${fusion.head_name_en}/${fusion.body_name_en}`;
 
   const stats = [
@@ -66,14 +64,7 @@ export default function FusionResultPage({
       <div className="rounded-xl bg-[rgb(20,20,28)] border border-[rgb(50,50,70)] p-6 mb-6">
         <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
           <div className="w-40 h-40 flex items-center justify-center rounded-xl bg-[rgb(15,15,22)] border border-[rgb(40,40,55)] shrink-0">
-            <Image
-              src={spriteUrl}
-              alt={fusionName}
-              width={128}
-              height={128}
-              unoptimized
-              className="object-contain"
-            />
+            <FusionSprite headId={hId} bodyId={bId} size={128} />
           </div>
 
           <div className="flex-1 text-center sm:text-left">

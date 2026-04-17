@@ -4,6 +4,8 @@ from pydantic import BaseModel
 class EvolutionOut(BaseModel):
     id: int
     pokemon_id: int
+    pokemon_name_en: str | None = None
+    pokemon_name_fr: str | None = None
     evolves_into_id: int
     evolves_into_name_en: str
     evolves_into_name_fr: str | None

@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
     ports:
-      - "5432:5432"
+      - "${FUSIONDEX_DB_PORT:-55432}:5432"
     networks:
       - backend
     healthcheck:
@@ -64,11 +64,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-fusiondex_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusiondex_password}
       SPRITES_DIR: /app/data/sprites
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:53000,http://localhost:58000}
     volumes:
       - ./backend:/app/backend
       - ./data/sprites:/app/data/sprites:ro
     ports:
-      - "8000:8000"
+      - "${FUSIONDEX_BACKEND_PORT:-58000}:8000"
     networks:
       - backend
     healthcheck:
@@ -85,7 +86,7 @@ services:
     volumes:
       - ./data/sprites:/usr/share/nginx/html/sprites:ro
     ports:
-      - "8080:80"
+      - "${FUSIONDEX_SPRITES_PORT:-58080}:80"
     networks:
       - backend
     restart: unless-stopped
@@ -97,15 +98,17 @@ services:
     build:
       context: ./frontend
       dockerfile: ../docker/Dockerfile.frontend
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-        NEXT_PUBLIC_SPRITES_URL: http://localhost:8080
     container_name: fusiondex_frontend
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      # Proxy Next.js → backend / sprites via le réseau Docker interne.
+      # Le browser n'a jamais connaissance de ces URLs.
+      BACKEND_INTERNAL_URL: http://backend:8000
+      SPRITES_INTERNAL_URL: http://sprites:80
     ports:
-      - "3000:3000"
+      - "${FUSIONDEX_FRONTEND_PORT:-53000}:3000"
     networks:
       - backend
     restart: unless-stopped

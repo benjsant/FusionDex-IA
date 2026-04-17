@@ -9,7 +9,7 @@ interface MovesetTableProps {
   moves: PokemonMoveOut[];
 }
 
-const METHOD_ORDER = ["level_up", "tm", "breeding", "tutor"];
+const METHOD_ORDER = ["level_up", "tm", "breeding", "tutor", "before_evolution"];
 
 export function MovesetTable({ moves }: MovesetTableProps) {
   const grouped = METHOD_ORDER.reduce<Record<string, PokemonMoveOut[]>>(

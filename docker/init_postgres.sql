@@ -321,6 +321,40 @@ CREATE TABLE IF NOT EXISTS type_effectiveness (
 
 
 -- ============================================================
+-- BLOC 7 — Move Experts (moves exclusifs aux fusions)
+-- ============================================================
+--
+-- Dans Infinite Fusion, deux PNJ « Move Expert » enseignent les signature moves
+-- de Pokémon absents du jeu, mais UNIQUEMENT aux fusions qui satisfont des
+-- conditions précises. Exemple : une fusion de Noctali peut apprendre Dernier
+-- Mot, mais pas Noctali seul.
+--
+-- Source : https://infinitefusion.fandom.com/wiki/List_of_Move_Expert_Moves
+--
+-- Chaque ligne du wiki est UNE alternative (OR entre les lignes pour un même
+-- move). À l'intérieur d'une ligne, tous les prérequis renseignés doivent être
+-- satisfaits (AND) :
+--   - required_pokemon_ids : head OU body ∈ liste (vide = pas de contrainte)
+--   - required_type_ids    : la fusion doit avoir TOUS ces types (AND)
+--   - required_move_ids    : la fusion doit connaître ≥1 de ces moves (OR)
+--
+-- Pensé pour supporter les extensions futures (Hoenn, etc.) : il suffit
+-- d'ajouter de nouvelles lignes pour de nouveaux Pokémon apprenants.
+
+-- 21. move_expert_move
+CREATE TABLE IF NOT EXISTS move_expert_move (
+    id                   SERIAL      PRIMARY KEY,
+    move_id              INTEGER     NOT NULL REFERENCES move(id) ON DELETE CASCADE,
+    expert_location      VARCHAR(20) NOT NULL CHECK (
+                             expert_location IN ('knot_island', 'boon_island')
+                         ),
+    required_pokemon_ids INTEGER[]   NOT NULL DEFAULT '{}',  -- OR entre eux
+    required_type_ids    INTEGER[]   NOT NULL DEFAULT '{}',  -- AND entre eux
+    required_move_ids    INTEGER[]   NOT NULL DEFAULT '{}'   -- OR entre eux
+);
+
+
+-- ============================================================
 -- Index pour les requêtes fréquentes
 -- ============================================================
 
@@ -366,3 +400,7 @@ CREATE INDEX IF NOT EXISTS idx_fusion_creator_sprite    ON fusion_sprite_creator
 -- type effectiveness
 CREATE INDEX IF NOT EXISTS idx_type_eff_attacking       ON type_effectiveness(attacking_type_id);
 CREATE INDEX IF NOT EXISTS idx_type_eff_defending       ON type_effectiveness(defending_type_id);
+
+-- move expert
+CREATE INDEX IF NOT EXISTS idx_move_expert_move         ON move_expert_move(move_id);
+CREATE INDEX IF NOT EXISTS idx_move_expert_location     ON move_expert_move(expert_location);

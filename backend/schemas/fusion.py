@@ -55,6 +55,21 @@ class FusionResult(BaseModel):
     sprite_path: str
 
 
+class FusionExpertMoveOut(BaseModel):
+    """Move enseignable à la fusion par un Move Expert (Knot / Boon)."""
+    move_id: int
+    name_en: str
+    name_fr: str | None
+    category: str
+    power: int | None
+    accuracy: int | None
+    pp: int
+    type: TypeOut
+    locations: list[str]  # ['knot_island'] / ['boon_island'] / les deux
+
+    model_config = {"from_attributes": True}
+
+
 class FusionInvolvingOut(BaseModel):
     head_id: int
     body_id: int

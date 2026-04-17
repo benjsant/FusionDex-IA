@@ -110,11 +110,22 @@ def get_pokemon_moves(db: Session, pokemon_id: int) -> list[PokemonMove]:
 
 
 def get_pokemon_evolutions(db: Session, pokemon_id: int) -> list[PokemonEvolution]:
-    """Evolution rows from a given Pokémon, with target name eagerly loaded."""
+    """Evolution rows touching this Pokémon (as source OR target).
+
+    Returns both:
+      - outgoing (this Pokémon evolves into X) — `pokemon_id == id`
+      - incoming (Y evolves into this Pokémon) — `evolves_into_id == id`
+    """
     return (
         db.query(PokemonEvolution)
-        .options(joinedload(PokemonEvolution.evolves_into))
-        .filter(PokemonEvolution.pokemon_id == pokemon_id)
+        .options(
+            joinedload(PokemonEvolution.evolves_into),
+            joinedload(PokemonEvolution.pokemon),
+        )
+        .filter(
+            (PokemonEvolution.pokemon_id == pokemon_id)
+            | (PokemonEvolution.evolves_into_id == pokemon_id)
+        )
         .all()
     )
 

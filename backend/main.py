@@ -1,5 +1,7 @@
 """FusionDex API — FastAPI entry point."""
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -26,14 +28,21 @@ app = FastAPI(
     version="0.3.0",
 )
 
+_cors_raw = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:53000,http://localhost:58000",
+)
+cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+
+# En temps normal, le browser ne tape jamais le backend directement : les
+# requêtes passent par le proxy Next.js (même origine). Ce CORS sert de
+# defense in depth pour les appels directs (Swagger, Postman, intégrations).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",          # Next.js dev (host)
-        "http://fusiondex_frontend:3000", # Docker internal
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 

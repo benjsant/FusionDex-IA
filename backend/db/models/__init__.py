@@ -19,6 +19,7 @@ from backend.db.models.triple_fusion import (
 )
 from backend.db.models.creator import Creator
 from backend.db.models.fusion_sprite import FusionSprite, FusionSpriteCreator
+from backend.db.models.move_expert_move import MoveExpertMove
 
 __all__ = [
     "Generation",
@@ -41,4 +42,5 @@ __all__ = [
     "Creator",
     "FusionSprite",
     "FusionSpriteCreator",
+    "MoveExpertMove",
 ]
