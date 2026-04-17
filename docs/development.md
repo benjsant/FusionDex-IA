@@ -59,12 +59,26 @@ En dev hors Docker, le proxy `/api/*` cible `BACKEND_INTERNAL_URL=http://localho
 
 ### Documentation
 
+Voie principale — Docker, cohérent avec le reste du projet :
+
+```bash
+docker compose --profile docs up docs     # http://localhost:58100
+```
+
+Le service est sous profil `docs` → il ne démarre **pas** avec un simple `docker compose up`. Les fichiers `docs/`, `mkdocs.yml`, `pyproject.toml`, `uv.lock` sont montés en volume, donc le hot-reload fonctionne dès qu'on édite une page.
+
+Premier lancement : `--build` pour construire l'image.
+
+```bash
+docker compose --profile docs up --build docs
+```
+
+Fallback host (sans Docker) :
+
 ```bash
 uv sync --group docs
 uv run mkdocs serve     # http://127.0.0.1:58100
 ```
-
-Le port `58100` suit la convention préfixe-5 (famille backend / dev-tooling). Surcharge ponctuelle : `uv run mkdocs serve -a 127.0.0.1:<port>`.
 
 ## Configuration
 
