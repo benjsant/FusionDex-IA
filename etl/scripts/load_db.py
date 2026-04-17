@@ -222,12 +222,15 @@ def load_pokemon_types(conn, pokedex: list[dict], type_map: dict) -> None:
     with conn.cursor() as cur:
         for entry in pokedex:
             if_id = entry["if_id"]
-            for slot, type_key in enumerate(
-                [entry.get("type1"), entry.get("type2")], start=1
-            ):
+            t1 = (entry.get("type1") or "").lower() or None
+            t2 = (entry.get("type2") or "").lower() or None
+            # Skip slot 2 if identical to slot 1 (wiki IF often duplicates for mono-type)
+            if t2 and t1 and t2 == t1:
+                t2 = None
+            for slot, type_key in ((1, t1), (2, t2)):
                 if not type_key:
                     continue
-                type_id = type_map.get(type_key.lower())
+                type_id = type_map.get(type_key)
                 if not type_id:
                     LOGGER.warning("Unknown type '%s' for Pokémon #%d", type_key, if_id)
                     continue

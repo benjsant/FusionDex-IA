@@ -23,10 +23,32 @@ def test_fusion_not_found(client: TestClient) -> None:
 
 
 def test_fusion_same_type_drops_type2(client: TestClient) -> None:
-    # Bulbasaur + Bulbasaur → both Grass → type2 dropped
-    r = client.get("/fusion/1/1")
+    # Pikachu (Electric mono) × Pikachu → mono Electric fusion → type2 dropped
+    r = client.get("/fusion/25/25")
     assert r.status_code == 200
-    assert r.json()["type2"] is None
+    body = r.json()
+    assert body["type1"]["name_en"] == "Electric"
+    assert body["type2"] is None
+
+
+def test_fusion_body_secondary_type(client: TestClient) -> None:
+    # Canonical IF rule: body's secondary type wins over body's primary.
+    # Bulbasaur (Grass/Poison) head × Charizard (Fire/Flying) body → Grass/Flying
+    r = client.get("/fusion/1/6")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["type1"]["name_en"] == "Grass"
+    assert body["type2"]["name_en"] == "Flying"
+
+
+def test_fusion_normal_flying_head_shifts_to_flying(client: TestClient) -> None:
+    # Special IF rule: a pure Normal/Flying head (e.g. Pidgey #16) uses
+    # Flying as type1. Pidgey × Bulbasaur → Flying/Poison.
+    r = client.get("/fusion/16/1")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["type1"]["name_en"] == "Flying"
+    assert body["type2"]["name_en"] == "Poison"
 
 
 def test_fusion_moves_origin_split(client: TestClient) -> None:

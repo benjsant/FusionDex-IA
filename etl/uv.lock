@@ -590,9 +590,6 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0" },
 ]
 
-[package.metadata.requires-dev]
-dev = []
-
 [[package]]
 name = "graphviz"
 version = "0.21"
