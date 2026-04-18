@@ -216,10 +216,8 @@ data/sprites_last_sha.txt
 # External reference projects
 lets-go-predictiondex/
 
-# Plan/notes files
-PLAN.md
-PLAN_FRONTEND.md
-claude.md
+# MkDocs build output
+site/
 
 # Prefect
 .prefect/

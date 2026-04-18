@@ -1,0 +1,93 @@
+site_name: FusionDex-IA
+site_description: Pokédex intelligent pour Pokémon Infinite Fusion — documentation complète
+site_url: https://fusiondex-ia.local/
+repo_name: FusionDex-IA
+docs_dir: docs
+
+# Convention "préfixe 5" du projet — la doc est classée dev-tooling backend.
+# Override ponctuel : `uv run mkdocs serve -a 127.0.0.1:<port>`
+dev_addr: 127.0.0.1:58100
+
+theme:
+  name: material
+  language: fr
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep-purple
+      toggle:
+        icon: material/weather-night
+        name: Mode sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep-purple
+      toggle:
+        icon: material/weather-sunny
+        name: Mode clair
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Accueil: index.md
+  - Architecture: architecture.md
+  - Base de données: database.md
+  - ETL: etl.md
+  - API backend: api.md
+  - Frontend: frontend.md
+  - Règles de fusion: fusion-rules.md
+  - Développement: development.md
+  - Roadmap: roadmap.md
+  - Archive:
+      - archive/index.md
+      - PLAN initial: archive/PLAN.md
+      - PLAN frontend: archive/PLAN_FRONTEND.md
+      - Notes Claude: archive/claude.md
+      - Fiche projet: archive/fiche-projet.md
+      - Post LinkedIn 2026-04-20: archive/linkedin-2026-04-20.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search:
+      lang: fr
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/
