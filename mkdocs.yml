@@ -54,6 +54,8 @@ nav:
       - PLAN initial: archive/PLAN.md
       - PLAN frontend: archive/PLAN_FRONTEND.md
       - Notes Claude: archive/claude.md
+      - Fiche projet: archive/fiche-projet.md
+      - Post LinkedIn 2026-04-20: archive/linkedin-2026-04-20.md
 
 markdown_extensions:
   - admonition
