@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
-from backend.routes.pokemon_route import _to_list_item
+from backend.routes.pokemon_route import pokemon_to_list_item
 from backend.schemas.generation import GenerationOut
 from backend.schemas.pokemon import PokemonListItem
 from backend.services.generation_service import (
@@ -26,6 +26,7 @@ def get_generations(db: Session = Depends(get_db)):
 
 @router.get("/{gen_id}", response_model=GenerationOut)
 def get_generation(gen_id: int, db: Session = Depends(get_db)):
+    """Fiche d'une génération par ID (1–9)."""
     g = get_generation_by_id(db, gen_id)
     if not g:
         raise HTTPException(status_code=404, detail="Generation not found")
@@ -37,4 +38,4 @@ def get_pokemon_for_generation(gen_id: int, db: Session = Depends(get_db)):
     """Tous les Pokémon d'une génération."""
     if not get_generation_by_id(db, gen_id):
         raise HTTPException(status_code=404, detail="Generation not found")
-    return [_to_list_item(p) for p in list_pokemon_in_generation(db, gen_id)]
+    return [pokemon_to_list_item(p) for p in list_pokemon_in_generation(db, gen_id)]

@@ -18,7 +18,7 @@ from backend.schemas.fusion import (
 from backend.schemas.type_ import TypeOut
 from backend.schemas.weakness import WeaknessOut
 from backend.services.fusion_service import (
-    _load_pokemon_with_types,
+    load_pokemon_with_types,
     compute_fusion,
     compute_fusion_abilities,
     compute_fusion_expert_moves,
@@ -56,8 +56,8 @@ def _to_type_out(t) -> TypeOut | None:
 
 
 def _load_pair_or_404(db: Session, head_id: int, body_id: int):
-    head = _load_pokemon_with_types(db, head_id)
-    body = _load_pokemon_with_types(db, body_id)
+    head = load_pokemon_with_types(db, head_id)
+    body = load_pokemon_with_types(db, body_id)
     if not head or not body:
         raise HTTPException(
             status_code=404,

@@ -6,16 +6,11 @@ import os
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
+from backend.schemas.ai import AiRequest
 from backend.services.ai_service import stream_ai_response
 
 router = APIRouter(prefix="/ai", tags=["AI"])
-
-
-class AiRequest(BaseModel):
-    message: str
-    context: str | None = None   # e.g. "Pokémon: Dracaufeu (id=6), fusion avec Mewtwo (id=150)"
 
 
 @router.post("/ask")
