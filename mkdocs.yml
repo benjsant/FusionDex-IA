@@ -48,6 +48,12 @@ nav:
   - Frontend: frontend.md
   - Règles de fusion: fusion-rules.md
   - Développement: development.md
+  - Référence code:
+      - reference/index.md
+      - Routes: reference/routes.md
+      - Services: reference/services.md
+      - Schemas: reference/schemas.md
+      - Modèles DB: reference/models.md
   - Roadmap: roadmap.md
   - Archive:
       - archive/index.md
@@ -86,6 +92,26 @@ markdown_extensions:
 plugins:
   - search:
       lang: fr
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            # Analyse statique via griffe uniquement — pas besoin d'importer
+            # les modules (donc pas besoin de psycopg2/fastapi/etc. dans
+            # l'image docs).
+            allow_inspection: false
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            heading_level: 3
+            filters: ["!^_"]
 
 extra:
   social:

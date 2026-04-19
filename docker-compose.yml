@@ -130,6 +130,8 @@ services:
       - ./mkdocs.yml:/app/mkdocs.yml
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
+      # Source Python pour l'auto-doc (mkdocstrings en mode static via griffe).
+      - ./backend:/app/backend:ro
     ports:
       - "${FUSIONDEX_DOCS_PORT:-58100}:58100"
     networks:
