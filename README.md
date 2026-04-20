@@ -58,16 +58,15 @@ Le projet intègre les sprites directement depuis les fichiers du jeu :
 
 ---
 
-### 🤖 Recherche assistée par IA (optionnel)
+### 🤖 Assistant conversationnel IA
 
-Une couche IA peut être ajoutée pour :
+Un endpoint `POST /ai/ask` branché sur l'API DeepSeek expose un assistant spécialisé Pokémon Infinite Fusion :
 
-- interpréter des requêtes en langage naturel
-- traduire ces requêtes en filtres ou requêtes SQL
-- améliorer l’exploration des données
+- streaming SSE (le frontend affiche la réponse token par token)
+- payload `{ "message": "...", "context": "..." }` — `context` optionnel pour injecter la sélection courante (Pokémon affiché, fusion en cours)
+- dégradation propre : `503` si `DEEPSEEK_API_KEY` absente, aucun mock silencieux
 
-Exemple :
-"Pokémon rapide de type feu"
+L'usage cible : aider le joueur à comprendre une fusion (stats, synergies, moves pertinents) plutôt que traduire du langage naturel en SQL. Voir [docs/api.md](docs/api.md#ia-deepseek) et [roadmap.md](docs/roadmap.md) pour les garde-fous restants (quotas, e2e).
 
 ---
 
