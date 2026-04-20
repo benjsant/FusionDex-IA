@@ -1,6 +1,6 @@
 # API backend
 
-FastAPI exposant 30+ endpoints. Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs).
+FastAPI exposant 36 endpoints (+ `/health`). Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs). Référence auto-générée : [Routes](reference/routes.md).
 
 En prod le backend n'est **pas** exposé publiquement — les requêtes passent par le proxy Next.js (`/api/*` sur le domaine public).
 
@@ -26,22 +26,38 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 
 | Méthode | Chemin                                          | Description                               |
 | ------- | ----------------------------------------------- | ----------------------------------------- |
-| GET     | `/pokemon/`                                     | Liste paginée + filtres type/gen          |
-| GET     | `/pokemon/{id}`                                 | Fiche complète                            |
+| GET     | `/pokemon/`                                     | Liste paginée + filtres type/gen/Hoenn    |
+| GET     | `/pokemon/search?q={nom}`                       | Recherche par nom EN ou FR (ilike)        |
+| GET     | `/pokemon/{id}`                                 | Fiche complète (types, talents, stats)    |
 | GET     | `/pokemon/{id}/moves`                           | Learnset (level-up + TM + tutor + egg)    |
-| GET     | `/pokemon/{id}/evolutions`                      | Chaîne pre + post                         |
+| GET     | `/pokemon/{id}/evolutions`                      | Chaîne pre + post (bidirectionnelle)      |
 | GET     | `/pokemon/{id}/locations`                       | Zones de capture                          |
 | GET     | `/pokemon/{id}/weaknesses`                      | Matchups défensifs                        |
 
-### Moves / Abilities / Types
+### Moves
 
-| Méthode | Chemin                     | Description                      |
-| ------- | -------------------------- | -------------------------------- |
-| GET     | `/moves/`                  | Liste paginée + filtres          |
-| GET     | `/moves/{id}`              | Détail + Pokémon qui apprennent  |
-| GET     | `/abilities/`              | Liste                            |
-| GET     | `/abilities/{id}`          | Détail + Pokémon porteurs        |
-| GET     | `/types/`                  | 18 types + matchups              |
+| Méthode | Chemin                               | Description                                        |
+| ------- | ------------------------------------ | -------------------------------------------------- |
+| GET     | `/moves/`                            | Liste + filtres (category, type_id, power_min/max) |
+| GET     | `/moves/search?q={nom}`              | Recherche nom EN/FR (accent-insensitive)           |
+| GET     | `/moves/by-type/{type_name}`         | Capacités d'un type (EN ou FR)                     |
+| GET     | `/moves/{id}`                        | Détail complet + descriptions                      |
+
+### Abilities
+
+| Méthode | Chemin                           | Description                                |
+| ------- | -------------------------------- | ------------------------------------------ |
+| GET     | `/abilities/`                    | Liste des ~178 talents                     |
+| GET     | `/abilities/search?q={nom}`      | Recherche nom EN/FR                        |
+| GET     | `/abilities/{id}`                | Détail + descriptions EN/FR                |
+
+### Types
+
+| Méthode | Chemin                     | Description                                         |
+| ------- | -------------------------- | --------------------------------------------------- |
+| GET     | `/types/`                  | 27 types (18 standard + 9 triple-fusion)            |
+| GET     | `/types/by-name/{name}`    | Résolution par nom EN ou FR (préfixe, insensible)   |
+| GET     | `/types/{id}`              | Type par ID                                         |
 
 ### Fusions
 
@@ -67,18 +83,23 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 | Méthode | Chemin                              | Description                                    |
 | ------- | ----------------------------------- | ---------------------------------------------- |
 | GET     | `/generations/`                     | Liste des 9 générations                        |
+| GET     | `/generations/{id}`                 | Fiche d'une génération                         |
 | GET     | `/generations/{id}/pokemon`         | Pokémon d'une génération                       |
-| GET     | `/creators/`                        | Créateurs de sprites                           |
+| GET     | `/creators/`                        | Créateurs de sprites (tri par nb décroissant)  |
+| GET     | `/creators/{id}`                    | Fiche créateur + compteur                      |
 | GET     | `/creators/{id}/sprites`            | Sprites d'un créateur                          |
 | GET     | `/triple-fusions/`                  | 23 fusions triples                             |
-| GET     | `/stats/coverage`                   | Audit de complétude                            |
-| GET     | `/health`                           | Healthcheck                                    |
+| GET     | `/triple-fusions/{id}`              | Détail d'une triple-fusion                     |
+| GET     | `/stats/coverage`                   | Audit de complétude DB                         |
+| GET     | `/health`                           | Healthcheck (Docker + CI)                      |
 
-### IA
+### IA (DeepSeek)
 
-| Méthode | Chemin      | Description                                                    |
-| ------- | ----------- | -------------------------------------------------------------- |
-| POST    | `/ai/ask`   | Question en langage naturel → réponse DeepSeek (503 sans clé)  |
+| Méthode | Chemin      | Description                                                                 |
+| ------- | ----------- | --------------------------------------------------------------------------- |
+| POST    | `/ai/ask`   | Assistant conversationnel IF — streaming SSE. `503` si `DEEPSEEK_API_KEY` absente. |
+
+Payload : `{ "message": "...", "context": "..." }` (context optionnel pour injecter la sélection courante — ex. *"Pokémon Dracaufeu id=6, fusion avec Mewtwo id=150"*).
 
 ## CORS
 
@@ -115,3 +136,5 @@ uv run pytest
 
 - [Règles de fusion](fusion-rules.md) — sémantique des endpoints `/fusion/*`.
 - [Architecture](architecture.md) — flux de requêtes.
+- [Référence routes](reference/routes.md) — signatures + docstrings auto-générées.
+- [Référence schemas](reference/schemas.md) — modèles Pydantic (I/O).
