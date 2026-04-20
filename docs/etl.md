@@ -19,10 +19,10 @@ Le pipeline ETL extrait les données depuis plusieurs sources externes, les tran
 
 ## Séquence d'exécution
 
-Le script principal [etl/scripts/load_db.py](https://github.com/) enchaîne une douzaine d'étapes :
+Le script principal [etl/scripts/load_db.py](https://github.com/benjsant/FusionDex-IA/blob/main/etl/scripts/load_db.py) enchaîne une douzaine d'étapes :
 
 1. **Initialisation** — création des tables via `init_postgres.sql` (si absentes).
-2. **Types** — import des 18 types.
+2. **Types** — import des 18 types standard + 9 types triple-fusion (27 au total).
 3. **Pokémon de base** — 501 espèces IF.
 4. **Abilities + relations** — talents et leurs liens aux Pokémon.
 5. **Moves + learnsets** — capacités et leur apprentissage.

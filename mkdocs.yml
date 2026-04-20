@@ -1,7 +1,9 @@
 site_name: FusionDex-IA
 site_description: Pokédex intelligent pour Pokémon Infinite Fusion — documentation complète
 site_url: https://fusiondex-ia.local/
-repo_name: FusionDex-IA
+repo_name: benjsant/FusionDex-IA
+repo_url: https://github.com/benjsant/FusionDex-IA
+edit_uri: edit/main/docs/
 docs_dir: docs
 
 # Convention "préfixe 5" du projet — la doc est classée dev-tooling backend.

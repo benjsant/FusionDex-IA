@@ -168,3 +168,4 @@ data/           # dumps + caches (gitignored)
 - [Architecture](architecture.md)
 - [ETL](etl.md)
 - [API backend](api.md)
+- [Référence code (auto-générée)](reference/index.md) — routes, services, schemas, models

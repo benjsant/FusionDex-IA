@@ -20,6 +20,7 @@
 - **Lancer le projet localement** → [Développement](development.md)
 - **Consommer l'API** → [API backend](api.md)
 - **Règles de fusion canoniques** → [Règles de fusion](fusion-rules.md)
+- **Référence du code** → [Routes](reference/routes.md) · [Services](reference/services.md) · [Schemas](reference/schemas.md) · [Models](reference/models.md)
 - **Ce qu'il reste à faire** → [Roadmap](roadmap.md)
 
 ## Sources des données
