@@ -31,6 +31,7 @@ def get_creators(
 
 @router.get("/{creator_id}", response_model=CreatorOut)
 def get_creator(creator_id: int, db: Session = Depends(get_db)):
+    """Fiche d'un créateur de sprites avec son compteur total."""
     row = get_creator_by_id(db, creator_id)
     if not row:
         raise HTTPException(status_code=404, detail="Creator not found")

@@ -14,6 +14,7 @@ def get_pokemon_or_404(
     pokemon_id: int = Path(..., ge=1),
     db: Session = Depends(get_db),
 ) -> Pokemon:
+    """Résout un Pokémon depuis le path ; lève 404 si absent."""
     p = get_pokemon_by_id(db, pokemon_id)
     if not p:
         raise HTTPException(status_code=404, detail=f"Pokémon #{pokemon_id} not found")

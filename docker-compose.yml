@@ -113,6 +113,31 @@ services:
       - backend
     restart: unless-stopped
 
+  # Service optionnel : documentation MkDocs Material avec hot-reload.
+  # Démarre uniquement sur demande :
+  #   docker compose --profile docs up docs
+  # N'entre pas dans `docker compose up` par défaut (pas nécessaire au run
+  # de l'app) ni dans l'override prod.
+  docs:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.docs
+    container_name: fusiondex_docs
+    profiles: ["docs"]
+    volumes:
+      # Montage live pour le hot-reload. Le .venv reste dans l'image.
+      - ./docs:/app/docs
+      - ./mkdocs.yml:/app/mkdocs.yml
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      # Source Python pour l'auto-doc (mkdocstrings en mode static via griffe).
+      - ./backend:/app/backend:ro
+    ports:
+      - "${FUSIONDEX_DOCS_PORT:-58100}:58100"
+    networks:
+      - backend
+    restart: unless-stopped
+
 networks:
   backend:
     driver: bridge

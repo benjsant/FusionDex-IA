@@ -35,7 +35,8 @@ from backend.db.models import (
 )
 
 
-def _load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
+def load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
+    """Charge un Pokémon + types (slot1/slot2) eager-loadés. Public : réutilisé par `fusion_route`."""
     return (
         db.query(Pokemon)
         .options(joinedload(Pokemon.types).joinedload(PokemonType.type))
@@ -332,8 +333,8 @@ def compute_fusion(
     Returns a dict with computed fusion stats, types, and sprite path.
     Returns None if either Pokémon is not found.
     """
-    head = _load_pokemon_with_types(db, head_id)
-    body = _load_pokemon_with_types(db, body_id)
+    head = load_pokemon_with_types(db, head_id)
+    body = load_pokemon_with_types(db, body_id)
 
     if not head or not body:
         return None

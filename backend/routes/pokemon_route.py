@@ -1,3 +1,7 @@
+"""API routes for Pokémon — liste, fiche, moveset, évolutions, locations, faiblesses."""
+
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -41,7 +45,8 @@ def _serialize_abilities(abilities_rel) -> list[AbilityOut]:
     ]
 
 
-def _to_list_item(p: Pokemon) -> PokemonListItem:
+def pokemon_to_list_item(p: Pokemon) -> PokemonListItem:
+    """Sérialise un Pokémon au format `PokemonListItem`. Public : réutilisé par `generation_route`."""
     return PokemonListItem(
         id=p.id,
         national_id=p.national_id,
@@ -72,7 +77,7 @@ def get_pokemon_list(
         generation_id=generation_id,
         include_hoenn=include_hoenn,
     )
-    return [_to_list_item(p) for p in pokemons]
+    return [pokemon_to_list_item(p) for p in pokemons]
 
 
 @router.get("/search", response_model=list[PokemonListItem])
@@ -81,7 +86,7 @@ def search_pokemon_route(
     db: Session = Depends(get_db),
 ):
     """Recherche par nom anglais ou français (accent-insensitive)."""
-    return [_to_list_item(p) for p in search_pokemon(db, q)]
+    return [pokemon_to_list_item(p) for p in search_pokemon(db, q)]
 
 
 @router.get("/{pokemon_id}", response_model=PokemonDetail)
