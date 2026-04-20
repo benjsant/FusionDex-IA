@@ -1,6 +1,6 @@
 # Base de données
 
-PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.com/), modèles SQLAlchemy dans [backend/db/models/](https://github.com/).
+PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.com/benjsant/FusionDex-IA/blob/main/docker/init_postgres.sql), modèles SQLAlchemy dans [backend/db/models/](https://github.com/benjsant/FusionDex-IA/tree/main/backend/db/models). Pour la ref des classes ORM, voir [Modèles DB](reference/models.md).
 
 ## Tables principales
 
@@ -8,7 +8,7 @@ PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.co
 
 | Table          | Contenu                                      | Volume |
 | -------------- | -------------------------------------------- | ------ |
-| `type`         | 18 types Pokémon (EN + FR)                   | 18     |
+| `type`         | 18 types standard + 9 types triple-fusion (`is_triple_fusion_type`) | 27 |
 | `ability`      | Talents (EN + FR + description)              | 178    |
 | `move`         | Capacités (nom, type, puissance, PP, …)      | 676    |
 | `generation`   | Générations (1–9)                            | 9      |
@@ -78,4 +78,5 @@ CREATE INDEX idx_move_expert_location ON move_expert_move(expert_location);
 ## Voir aussi
 
 - [ETL](etl.md) — comment la base est peuplée.
-- [docker/init_postgres.sql](https://github.com/) — source de vérité du schéma.
+- [docker/init_postgres.sql](https://github.com/benjsant/FusionDex-IA/blob/main/docker/init_postgres.sql) — source de vérité du schéma.
+- [Modèles DB](reference/models.md) — classes SQLAlchemy auto-documentées.

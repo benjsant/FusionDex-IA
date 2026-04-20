@@ -1,6 +1,6 @@
 # Règles de fusion
 
-Pokémon Infinite Fusion combine deux Pokémon en un. Les règles suivantes sont **canoniques** dans le jeu et reproduites par le backend ([backend/services/fusion_service.py](https://github.com/)).
+Pokémon Infinite Fusion combine deux Pokémon en un. Les règles suivantes sont **canoniques** dans le jeu et reproduites par le backend ([backend/services/fusion_service.py](https://github.com/benjsant/FusionDex-IA/blob/main/backend/services/fusion_service.py) — voir aussi [Référence service](reference/services.md#fusion)).
 
 Dans tout ce document : `head` = Pokémon dont on prend la tête, `body` = Pokémon dont on prend le corps.
 
@@ -102,5 +102,6 @@ Réponse : liste de `FusionExpertMoveOut` avec, pour chaque move débloqué, la 
 ## Références
 
 - [Pokémon Infinite Fusion Wiki — Fusion mechanics](https://infinitefusion.fandom.com/)
-- [backend/services/fusion_service.py](https://github.com/) — implémentation.
+- [backend/services/fusion_service.py](https://github.com/benjsant/FusionDex-IA/blob/main/backend/services/fusion_service.py) — implémentation.
+- [Référence service fusion](reference/services.md#fusion) — API auto-documentée.
 - [docs/database.md#focus-move_expert_move](database.md#focus-move_expert_move) — modèle de données.

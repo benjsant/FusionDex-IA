@@ -59,8 +59,8 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 
 | Méthode | Chemin                                     | Description                                   |
 | ------- | ------------------------------------------ | --------------------------------------------- |
+| GET     | `/sprites/{head_id}/{body_id}`             | Liste des variantes + crédits                 |
 | GET     | `/sprites/{head_id}/{body_id}/image`       | PNG — default ou `?variant_id=N`              |
-| GET     | `/sprites/{head_id}/{body_id}/variants`    | Liste des variantes + crédits                 |
 
 ### Méta
 

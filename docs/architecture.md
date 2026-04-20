@@ -53,14 +53,21 @@ flowchart LR
 
 ## Services Docker
 
-Quatre services, tous sur le réseau interne Docker. Seul le frontend est exposé publiquement en prod.
+Quatre services de run (`db`, `backend`, `sprites`, `frontend`) sur le réseau interne Docker, plus un service optionnel `docs` sous profil Compose. Seul le frontend est exposé publiquement en prod.
 
-| Service    | Port interne | Port hôte (dev) | Rôle                                |
-| ---------- | ------------ | --------------- | ----------------------------------- |
-| `db`       | 5432         | 55432           | PostgreSQL 16                       |
-| `backend`  | 8000         | 58000           | FastAPI                             |
-| `sprites`  | 80           | 58080           | nginx statique pour sprites PNG     |
-| `frontend` | 3000         | 53000           | Next.js (standalone)                |
+| Service    | Port interne | Port hôte (dev) | Rôle                                | Profil   |
+| ---------- | ------------ | --------------- | ----------------------------------- | -------- |
+| `db`       | 5432         | 55432           | PostgreSQL 16                       | défaut   |
+| `backend`  | 8000         | 58000           | FastAPI                             | défaut   |
+| `sprites`  | 80           | 58080           | nginx statique pour sprites PNG     | défaut   |
+| `frontend` | 3000         | 53000           | Next.js (standalone)                | défaut   |
+| `docs`     | 58100        | 58100           | MkDocs Material (cette doc)         | `docs`   |
+
+Le service `docs` ne démarre **pas** avec `docker compose up` — il faut le profil explicite :
+
+```bash
+docker compose --profile docs up docs
+```
 
 Les ports hôte suivent une convention **préfixe 5** pour éviter les collisions avec d'autres projets locaux.
 
@@ -93,7 +100,8 @@ Identique, sauf que `http://backend:8000` n'est joignable que depuis le conteneu
 
 ## Références
 
-- [backend/main.py](https://github.com/) — wiring FastAPI + CORS
-- [docker-compose.yml](https://github.com/) — services dev
-- [docker-compose.prod.yml](https://github.com/) — override prod
-- [frontend/app/api/[...path]/route.ts](https://github.com/) — proxy catch-all
+- [backend/main.py](https://github.com/benjsant/FusionDex-IA/blob/main/backend/main.py) — wiring FastAPI + CORS
+- [docker-compose.yml](https://github.com/benjsant/FusionDex-IA/blob/main/docker-compose.yml) — services dev
+- [docker-compose.prod.yml](https://github.com/benjsant/FusionDex-IA/blob/main/docker-compose.prod.yml) — override prod
+- [frontend/app/api/[...path]/route.ts](https://github.com/benjsant/FusionDex-IA/blob/main/frontend/app/api/%5B...path%5D/route.ts) — proxy catch-all
+- [Référence routes](reference/routes.md) — endpoints FastAPI auto-documentés.
