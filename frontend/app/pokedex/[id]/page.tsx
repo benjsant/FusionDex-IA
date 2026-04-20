@@ -15,7 +15,7 @@ import { MovesetTable } from "@/components/pokemon/MovesetTable";
 import { EvolutionChain } from "@/components/pokemon/EvolutionChain";
 import { WeaknessGrid } from "@/components/pokemon/WeaknessGrid";
 import { AiSuggestButton } from "@/components/ai/AiSuggestButton";
-import { SPRITES_BASE_URL } from "@/lib/constants";
+import { basePokemonSprite } from "@/lib/constants";
 import { primaryType, secondaryType, cn } from "@/lib/utils";
 
 type Tab = "stats" | "moves" | "evolutions" | "weaknesses" | "fusion";
@@ -45,7 +45,7 @@ export default function PokemonDetailPage({
   if (isLoading) return <PageSkeleton />;
   if (!pokemon)  return <NotFound id={pokemonId} />;
 
-  const spriteUrl = `${SPRITES_BASE_URL}/sprites/${pokemonId}.${pokemonId}.png`;
+  const spriteUrl = basePokemonSprite(pokemon.national_id ?? pokemonId);
 
   const t1 = primaryType(pokemon.types);
   const t2 = secondaryType(pokemon.types);

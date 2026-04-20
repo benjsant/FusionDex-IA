@@ -68,6 +68,8 @@ export interface PokemonMoveOut {
 export interface EvolutionOut {
   id: number;
   pokemon_id: number;
+  pokemon_name_en: string | null;
+  pokemon_name_fr: string | null;
   evolves_into_id: number;
   evolves_into_name_en: string;
   evolves_into_name_fr: string | null;

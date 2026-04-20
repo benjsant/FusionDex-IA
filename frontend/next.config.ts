@@ -5,16 +5,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
-        port: "8080",
-        pathname: "/sprites/**",
-      },
-      {
-        protocol: "http",
-        hostname: "fusiondex_sprites",
-        port: "80",
-        pathname: "/sprites/**",
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/PokeAPI/sprites/**",
       },
     ],
   },

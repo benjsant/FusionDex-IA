@@ -67,6 +67,15 @@ def fix_pokemon_types(conn) -> None:
             errors += 1
             continue
 
+        # Erase stale slots before re-inserting (handles mono-type Pokémon
+        # that previously had a stale slot 2 from the wiki).
+        slots_from_api = [s for s, _ in types]
+        if slots_from_api:
+            cur.execute(
+                "DELETE FROM pokemon_type WHERE pokemon_id = %s AND slot <> ALL(%s)",
+                (pokemon_id, slots_from_api),
+            )
+
         for slot, type_name in types:
             # Certains noms PokeAPI : "fighting" → "Fighting"
             type_id = type_map.get(type_name)

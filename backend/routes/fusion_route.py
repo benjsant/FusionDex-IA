@@ -10,6 +10,7 @@ from backend.routes.deps import get_pokemon_or_404
 from backend.db.models import Pokemon
 from backend.schemas.fusion import (
     FusionAbilityOut,
+    FusionExpertMoveOut,
     FusionInvolvingOut,
     FusionMoveOut,
     FusionResult,
@@ -20,6 +21,7 @@ from backend.services.fusion_service import (
     _load_pokemon_with_types,
     compute_fusion,
     compute_fusion_abilities,
+    compute_fusion_expert_moves,
     compute_fusion_moves,
     compute_fusion_weaknesses,
     list_fusions_involving,
@@ -143,3 +145,27 @@ def get_fusion_weaknesses(head_id: int, body_id: int, db: Session = Depends(get_
     """Multiplicateurs de dégâts contre les types de la fusion (non-neutres uniquement)."""
     head, body = _load_pair_or_404(db, head_id, body_id)
     return compute_fusion_weaknesses(db, head, body)
+
+
+@router.get(
+    "/{head_id}/{body_id}/expert-moves",
+    response_model=list[FusionExpertMoveOut],
+)
+def get_fusion_expert_moves(head_id: int, body_id: int, db: Session = Depends(get_db)):
+    """Moves enseignables à cette fusion par un Move Expert (Knot / Boon Island)."""
+    head, body = _load_pair_or_404(db, head_id, body_id)
+    rows = compute_fusion_expert_moves(db, head, body)
+    return [
+        FusionExpertMoveOut(
+            move_id=r["move_id"],
+            name_en=r["name_en"],
+            name_fr=r["name_fr"],
+            category=r["category"],
+            power=r["power"],
+            accuracy=r["accuracy"],
+            pp=r["pp"],
+            type=_to_type_out(r["type"]),
+            locations=r["locations"],
+        )
+        for r in rows
+    ]

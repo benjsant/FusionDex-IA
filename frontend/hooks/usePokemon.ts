@@ -5,11 +5,12 @@ import {
   getPokemonMoves,
   getPokemonEvolutions,
   getPokemonWeaknesses,
+  getTypes,
   searchPokemon,
 } from "@/lib/api";
 
 export function usePokemonList(params?: {
-  type?: string;
+  type_id?: number;
   gen?: number;
   page?: number;
   page_size?: number;
@@ -17,6 +18,14 @@ export function usePokemonList(params?: {
   return useQuery({
     queryKey: ["pokemon-list", params],
     queryFn: () => getPokemonList(params),
+  });
+}
+
+export function useTypes() {
+  return useQuery({
+    queryKey: ["types"],
+    queryFn: () => getTypes(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

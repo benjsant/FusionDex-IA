@@ -8,11 +8,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* vars must be available at BUILD time — passed as ARG then ENV
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ARG NEXT_PUBLIC_SPRITES_URL=http://localhost:8080
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_SPRITES_URL=$NEXT_PUBLIC_SPRITES_URL
+# Pas de NEXT_PUBLIC_API_URL ici : toutes les URLs sortent via `/api/*` (proxy
+# Next.js vers BACKEND_INTERNAL_URL à runtime).
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

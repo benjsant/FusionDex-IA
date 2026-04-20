@@ -4,9 +4,14 @@ Formulas (Pokémon Infinite Fusion):
   Physical stats (HP, Attack, Defense, Speed) = floor(Body×2/3 + Head×1/3)
   Special stats (Sp.Atk, Sp.Def)              = floor(Head×2/3 + Body×1/3)
 
-Types:
-  type1 = Head's primary type (slot 1)
-  type2 = Body's primary type (slot 1), omitted if identical to type1
+Types — règles canoniques tirées du script IF `FusedSpecies.rb`
+(calculate_type1 / calculate_type2) :
+  type1 = head.type1
+         Exception : si head est pur Normal/Flying → on prend type2 (Flying).
+  type2 = body.type2 si défini (ou body.type1 pour les mono-types),
+         sauf si cette valeur est identique à type1 — dans ce cas on
+         retombe sur body.type1.
+  Si type2 finit identique à type1 → on l'omet (fusion mono-type).
 """
 
 from __future__ import annotations
@@ -18,7 +23,16 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Move, Pokemon, PokemonAbility, PokemonMove, PokemonType, Type, TypeEffectiveness
+from backend.db.models import (
+    Move,
+    MoveExpertMove,
+    Pokemon,
+    PokemonAbility,
+    PokemonMove,
+    PokemonType,
+    Type,
+    TypeEffectiveness,
+)
 
 
 def _load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
@@ -30,14 +44,47 @@ def _load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
     )
 
 
+NORMAL_TYPE_EN = "Normal"
+FLYING_TYPE_EN = "Flying"
+
+
+def _slot_types(p: Pokemon) -> tuple[Type | None, Type | None]:
+    """Retourne (type_slot1, type_slot2) du Pokémon (type2 à None si mono)."""
+    by_slot = {pt.slot: pt.type for pt in p.types}
+    return by_slot.get(1), by_slot.get(2)
+
+
 def compute_fusion_types(head: Pokemon, body: Pokemon) -> tuple[Type | None, Type | None]:
-    """Return (type1, type2) of a fusion. type2 dropped if identical to type1."""
-    head_types = sorted(head.types, key=lambda pt: pt.slot)
-    body_types = sorted(body.types, key=lambda pt: pt.slot)
-    type1 = head_types[0].type if head_types else None
-    type2 = body_types[0].type if body_types else None
-    if type1 and type2 and type1.id == type2.id:
+    """Calcule (type1, type2) selon les règles d'Infinite Fusion.
+
+    Voir docstring du module pour la spec complète.
+    """
+    head_t1, head_t2 = _slot_types(head)
+    body_t1, body_t2 = _slot_types(body)
+
+    # type1 = head.type1, avec exception Normal/Flying → Flying
+    if (
+        head_t1 is not None
+        and head_t2 is not None
+        and head_t1.name_en == NORMAL_TYPE_EN
+        and head_t2.name_en == FLYING_TYPE_EN
+    ):
+        type1 = head_t2
+    else:
+        type1 = head_t1
+
+    # type2 = body.type2 (ou body.type1 pour les mono-types), sauf si ça
+    # duplique type1 → on retombe sur body.type1.
+    body_secondary = body_t2 if body_t2 is not None else body_t1
+    if body_secondary is not None and type1 is not None and body_secondary.id == type1.id:
+        type2 = body_t1
+    else:
+        type2 = body_secondary
+
+    # Dernière dédup : fusion mono-type si type2 == type1
+    if type1 is not None and type2 is not None and type1.id == type2.id:
         type2 = None
+
     return type1, type2
 
 
@@ -158,6 +205,78 @@ def compute_fusion_abilities(db: Session, head: Pokemon, body: Pokemon) -> list[
     add(head_hidden, "head", True)
     add(body_hidden, "body", True)
     return result
+
+
+def compute_fusion_expert_moves(
+    db: Session, head: Pokemon, body: Pokemon
+) -> list[dict]:
+    """Moves enseignables à cette fusion par les Move Experts (Knot + Boon).
+
+    Une fusion qualifie pour un move si AU MOINS UNE ligne de
+    `move_expert_move` satisfait les 3 conditions (AND intra-ligne) :
+      - required_pokemon_ids non-vide ⇒ head.id OU body.id ∈ liste
+      - required_type_ids    non-vide ⇒ TOUS ces types ∈ types de la fusion
+      - required_move_ids    non-vide ⇒ la fusion connaît ≥1 de ces moves
+    Un tableau vide = pas de contrainte sur cet axe.
+
+    Retourne une entrée par move qualifié, avec la liste des locations
+    (« knot_island » / « boon_island ») qui l'enseignent.
+    """
+    type1, type2 = compute_fusion_types(head, body)
+    fusion_type_ids = {t.id for t in (type1, type2) if t}
+
+    # Moves connus par la fusion (head ∪ body movepool)
+    learned_move_ids: set[int] = {
+        mid for (mid,) in db.query(PokemonMove.move_id)
+        .filter(PokemonMove.pokemon_id.in_((head.id, body.id)))
+        .distinct()
+        .all()
+    }
+
+    rows = (
+        db.query(MoveExpertMove)
+        .options(joinedload(MoveExpertMove.move).joinedload(Move.type))
+        .all()
+    )
+
+    qualified: dict[int, dict] = {}  # move_id → entry
+    for row in rows:
+        # AND : Pokémon
+        if row.required_pokemon_ids:
+            if head.id not in row.required_pokemon_ids and body.id not in row.required_pokemon_ids:
+                continue
+        # AND : tous les types requis doivent être dans la fusion
+        if row.required_type_ids:
+            if not set(row.required_type_ids).issubset(fusion_type_ids):
+                continue
+        # AND : ≥1 move prérequis connu
+        if row.required_move_ids:
+            if not (set(row.required_move_ids) & learned_move_ids):
+                continue
+
+        entry = qualified.get(row.move_id)
+        if entry is None:
+            m = row.move
+            entry = {
+                "move_id":   row.move_id,
+                "name_en":   m.name_en,
+                "name_fr":   m.name_fr,
+                "category":  m.category,
+                "power":     m.power,
+                "accuracy":  m.accuracy,
+                "pp":        m.pp,
+                "type":      m.type,
+                "locations": set(),
+            }
+            qualified[row.move_id] = entry
+        entry["locations"].add(row.expert_location)
+
+    out = []
+    for entry in qualified.values():
+        entry["locations"] = sorted(entry["locations"])
+        out.append(entry)
+    out.sort(key=lambda e: (e["locations"][0], e["name_en"]))
+    return out
 
 
 def list_fusions_involving(
