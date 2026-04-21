@@ -169,17 +169,15 @@ def compute_fusion_abilities(db: Session, head: Pokemon, body: Pokemon) -> list[
       - Body's slot-1 ability → fusion slot 2 (only if different)
       - Hidden abilities of both are listed as hidden options
     """
-    def ability_rows(pid: int) -> list[PokemonAbility]:
-        return (
-            db.query(PokemonAbility)
-            .options(joinedload(PokemonAbility.ability))
-            .filter(PokemonAbility.pokemon_id == pid)
-            .order_by(PokemonAbility.slot)
-            .all()
-        )
-
-    head_abilities = ability_rows(head.id)
-    body_abilities = ability_rows(body.id)
+    rows = (
+        db.query(PokemonAbility)
+        .options(joinedload(PokemonAbility.ability))
+        .filter(PokemonAbility.pokemon_id.in_((head.id, body.id)))
+        .order_by(PokemonAbility.pokemon_id, PokemonAbility.slot)
+        .all()
+    )
+    head_abilities = [a for a in rows if a.pokemon_id == head.id]
+    body_abilities = [a for a in rows if a.pokemon_id == body.id]
 
     head_slot1 = next((a for a in head_abilities if not a.is_hidden), None)
     body_slot1 = next((a for a in body_abilities if not a.is_hidden), None)
