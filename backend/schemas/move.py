@@ -39,3 +39,20 @@ class PokemonMoveOut(BaseModel):
     source: str         # base | infinite_fusion
 
     model_config = {"from_attributes": True}
+
+
+class MoveTutorOut(BaseModel):
+    """A NPC that teaches a specific move, with location and price.
+
+    `price` is NULL when `currency` is 'free' or 'quest'.
+    """
+    id: int
+    move_id: int
+    location_id: int
+    location_name_en: str
+    location_name_fr: str | None
+    price: int | None
+    currency: str                  # 'pokedollars' | 'free' | 'quest'
+    npc_description: str | None
+
+    model_config = {"from_attributes": True}

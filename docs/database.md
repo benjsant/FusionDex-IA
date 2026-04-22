@@ -32,6 +32,7 @@ PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.co
 | `fusion_sprite`    | 166 090 sprites custom (head_id, body_id, variant, path, crédit) |
 | `triple_fusion`    | 23 fusions triples reconnues                                  |
 | `move_expert_move` | 65 règles Move Expert (Knot Island + Boon Island)             |
+| `move_tutor`       | 41 Move Tutors classiques (NPC, prix, localisation)           |
 
 ## Focus : `move_expert_move`
 

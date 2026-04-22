@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Move, PokemonMove
+from backend.db.models import Location, Move, MoveTutor, PokemonMove
 from backend.utils.text import normalize
 
 
@@ -89,5 +89,20 @@ def list_pokemon_moves(db: Session, pokemon_id: int) -> list[PokemonMove]:
         )
         .filter(PokemonMove.pokemon_id == pokemon_id)
         .order_by(PokemonMove.method, PokemonMove.level)
+        .all()
+    )
+
+
+def list_tutors_for_move(db: Session, move_id: int) -> list[MoveTutor]:
+    """All `move_tutor` rows teaching this move, location eagerly loaded.
+
+    Ordered by price ASC (free/quest first via NULLs FIRST).
+    """
+    return (
+        db.query(MoveTutor)
+        .options(joinedload(MoveTutor.location))
+        .filter(MoveTutor.move_id == move_id)
+        .order_by(MoveTutor.price.asc().nullsfirst(), Location.name_en)
+        .join(Location, Location.id == MoveTutor.location_id)
         .all()
     )

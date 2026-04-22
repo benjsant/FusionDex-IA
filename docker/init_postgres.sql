@@ -355,6 +355,34 @@ CREATE TABLE IF NOT EXISTS move_expert_move (
 
 
 -- ============================================================
+-- BLOC 8 — Move Tutors (NPCs enseignant un move spécifique)
+-- ============================================================
+--
+-- Source : https://infinitefusion.fandom.com/wiki/List_of_Tutors
+-- Hors scope : Move Relearner, Move Deleter, Egg Move Tutor (cas spéciaux
+-- qui ne sont pas liés à un move unique — documentés ailleurs).
+-- Hors scope : Move Experts (Knot/Boon Islands) → déjà dans `move_expert_move`.
+--
+-- currency :
+--   'pokedollars' → `price` = montant en ₽ (obligatoire)
+--   'free'        → gratuit inconditionnel, `price` NULL
+--   'quest'       → gratuit après une quête/combat, `price` NULL,
+--                   détail dans `npc_description`.
+
+-- 22. move_tutor
+CREATE TABLE IF NOT EXISTS move_tutor (
+    id              SERIAL       PRIMARY KEY,
+    move_id         INTEGER      NOT NULL REFERENCES move(id) ON DELETE CASCADE,
+    location_id     INTEGER      NOT NULL REFERENCES location(id),
+    price           INTEGER,     -- NULL si gratuit ou quête ; en ₽ sinon
+    currency        VARCHAR(20)  NOT NULL
+                                 CHECK (currency IN ('pokedollars', 'free', 'quest')),
+    npc_description TEXT,        -- contexte (bâtiment, quête, NPC)
+    UNIQUE (move_id, location_id)
+);
+
+
+-- ============================================================
 -- Index pour les requêtes fréquentes
 -- ============================================================
 
@@ -409,3 +437,7 @@ CREATE INDEX IF NOT EXISTS idx_type_eff_defending       ON type_effectiveness(de
 -- move expert
 CREATE INDEX IF NOT EXISTS idx_move_expert_move         ON move_expert_move(move_id);
 CREATE INDEX IF NOT EXISTS idx_move_expert_location     ON move_expert_move(expert_location);
+
+-- move tutor
+CREATE INDEX IF NOT EXISTS idx_move_tutor_move          ON move_tutor(move_id);
+CREATE INDEX IF NOT EXISTS idx_move_tutor_location      ON move_tutor(location_id);

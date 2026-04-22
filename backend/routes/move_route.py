@@ -6,12 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
-from backend.schemas.move import MoveDetail, MoveListItem, PokemonMoveOut
+from backend.schemas.move import MoveDetail, MoveListItem, MoveTutorOut, PokemonMoveOut
 from backend.schemas.type_ import TypeOut
 from backend.services.move_service import (
     get_move_by_id,
     list_moves,
     list_moves_by_type,
+    list_tutors_for_move,
     search_moves,
 )
 
@@ -75,6 +76,30 @@ def get_moves_by_type(type_name: str, db: Session = Depends(get_db)):
     if not moves:
         raise HTTPException(status_code=404, detail=f"No moves found for type '{type_name}'")
     return [_move_to_list_item(m) for m in moves]
+
+
+@router.get("/{move_id}/tutors", response_model=list[MoveTutorOut])
+def get_move_tutors(move_id: int, db: Session = Depends(get_db)):
+    """Lieux et prix où cette capacité peut être apprise via un Move Tutor classique.
+
+    Retourne une liste vide si aucun tutor n'enseigne ce move. Scope : tutors
+    classiques (un NPC = un move). Hors scope : Move Experts (fusion-only),
+    Move Relearner, Move Deleter, Egg Move Tutor.
+    """
+    tutors = list_tutors_for_move(db, move_id)
+    return [
+        MoveTutorOut(
+            id=t.id,
+            move_id=t.move_id,
+            location_id=t.location_id,
+            location_name_en=t.location.name_en,
+            location_name_fr=t.location.name_fr,
+            price=t.price,
+            currency=t.currency,
+            npc_description=t.npc_description,
+        )
+        for t in tutors
+    ]
 
 
 @router.get("/{move_id}", response_model=MoveDetail)
