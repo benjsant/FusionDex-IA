@@ -394,8 +394,13 @@ CREATE INDEX IF NOT EXISTS idx_tf_component_pokemon  ON triple_fusion_component(
 
 -- sprites
 CREATE INDEX IF NOT EXISTS idx_fusion_sprite_pair       ON fusion_sprite(head_id, body_id);
+CREATE INDEX IF NOT EXISTS idx_fusion_sprite_body       ON fusion_sprite(body_id);
 CREATE INDEX IF NOT EXISTS idx_fusion_sprite_default    ON fusion_sprite(head_id, body_id, is_default);
 CREATE INDEX IF NOT EXISTS idx_fusion_creator_sprite    ON fusion_sprite_creator(fusion_sprite_id);
+
+-- Invariant : au plus un sprite `is_default = TRUE` par paire (head, body).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fusion_sprite_default
+    ON fusion_sprite(head_id, body_id) WHERE is_default = TRUE;
 
 -- type effectiveness
 CREATE INDEX IF NOT EXISTS idx_type_eff_attacking       ON type_effectiveness(attacking_type_id);
