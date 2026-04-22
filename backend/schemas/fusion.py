@@ -65,7 +65,8 @@ class FusionExpertMoveOut(BaseModel):
     accuracy: int | None
     pp: int
     type: TypeOut
-    locations: list[str]  # ['knot_island'] / ['boon_island'] / les deux
+    locations: list[str]                       # ['knot_island'] / ['boon_island'] / les deux
+    prices_heart_scales: dict[str, int]        # map location → prix en Heart Scales
 
     model_config = {"from_attributes": True}
 

@@ -90,7 +90,14 @@ Entre lignes : **OR** — une seule ligne validée suffit pour débloquer le mov
 GET /fusion/{head_id}/{body_id}/expert-moves
 ```
 
-Réponse : liste de `FusionExpertMoveOut` avec, pour chaque move débloqué, la liste des `locations` où il peut être appris (0, 1 ou 2 entrées : `knot_island` et/ou `boon_island`).
+Réponse : liste de `FusionExpertMoveOut` avec, pour chaque move débloqué, la liste des `locations` où il peut être appris (0, 1 ou 2 entrées : `knot_island` et/ou `boon_island`), plus `prices_heart_scales` (map location → prix).
+
+**Prix uniformes par expert** (source : wiki IF) :
+
+- **Knot Island** : 2 Heart Scales par move
+- **Boon Island** : 10 Heart Scales par move
+
+Ces constantes sont définies dans `fusion_service.MOVE_EXPERT_PRICES_HEART_SCALES` — pas stockées en DB (dénormalisation inutile, règle métier dérivable de `expert_location`).
 
 ## Sprites
 

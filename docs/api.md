@@ -76,7 +76,7 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 | GET     | `/fusion/{head_id}/{body_id}/moves`         | Learnset de la fusion                          |
 | GET     | `/fusion/{head_id}/{body_id}/abilities`     | Talents combinés                               |
 | GET     | `/fusion/{head_id}/{body_id}/weaknesses`    | Matchups défensifs                             |
-| GET     | `/fusion/{head_id}/{body_id}/expert-moves`  | Moves débloqués par les Move Experts           |
+| GET     | `/fusion/{head_id}/{body_id}/expert-moves`  | Moves débloqués par les Move Experts (+ prix Heart Scales par location) |
 | GET     | `/fusion/random`                            | Fusion aléatoire                               |
 | GET     | `/fusions/involving/{pokemon_id}`           | Toutes les paires où ce Pokémon intervient     |
 

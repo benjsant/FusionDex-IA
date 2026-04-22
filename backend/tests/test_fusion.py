@@ -92,3 +92,19 @@ def test_fusion_random(client: TestClient) -> None:
     f = r.json()
     assert "head_name_en" in f and "body_name_en" in f
     assert "sprite_path" in f
+
+
+def test_fusion_expert_moves_heart_scale_prices(client: TestClient) -> None:
+    """Expert moves expose Heart Scale prices per location (Knot=2, Boon=10)."""
+    # Umbreon (197) × Bulbasaur (1) — docs example, qualifies for several rules
+    r = client.get("/fusion/197/1/expert-moves")
+    assert r.status_code == 200
+    moves = r.json()
+    assert len(moves) > 0
+    for m in moves:
+        assert m["prices_heart_scales"]
+        for loc, price in m["prices_heart_scales"].items():
+            assert loc in ("knot_island", "boon_island")
+            assert price == (2 if loc == "knot_island" else 10)
+        # Keys of prices_heart_scales must match locations list
+        assert set(m["prices_heart_scales"].keys()) == set(m["locations"])
