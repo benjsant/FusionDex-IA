@@ -1,6 +1,6 @@
 # API backend
 
-FastAPI exposant 37 endpoints (+ `/health`). Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs). Référence auto-générée : [Routes](reference/routes.md).
+FastAPI exposant 40 endpoints (+ `/health`). Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs). Référence auto-générée : [Routes](reference/routes.md).
 
 En prod le backend n'est **pas** exposé publiquement — les requêtes passent par le proxy Next.js (`/api/*` sur le domaine public).
 
@@ -59,6 +59,14 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 | GET     | `/types/`                  | 27 types (18 standard + 9 triple-fusion)            |
 | GET     | `/types/by-name/{name}`    | Résolution par nom EN ou FR (préfixe, insensible)   |
 | GET     | `/types/{id}`              | Type par ID                                         |
+
+### Items
+
+| Méthode | Chemin                     | Description                                         |
+| ------- | -------------------------- | --------------------------------------------------- |
+| GET     | `/items/`                  | 70 items (fusion/evolution/valuable) — filtre `?category=` |
+| GET     | `/items/search?q={nom}`    | Recherche nom EN/FR                                 |
+| GET     | `/items/{id}`              | Détail item (effect, price_buy, price_sell)         |
 
 ### Fusions
 

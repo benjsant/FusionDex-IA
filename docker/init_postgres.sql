@@ -341,6 +341,34 @@ CREATE TABLE IF NOT EXISTS type_effectiveness (
 -- Pensé pour supporter les extensions futures (Hoenn, etc.) : il suffit
 -- d'ajouter de nouvelles lignes pour de nouveaux Pokémon apprenants.
 
+-- ============================================================
+-- BLOC 6bis — Items (scope restreint : Fusion / Evolution / Valuables)
+-- ============================================================
+--
+-- Source : https://infinitefusion.fandom.com/wiki/List_of_Items
+-- Scope délibérément restreint aux catégories les plus utiles :
+--   - 'fusion'    → DNA Splicers, Super Splicers, etc.
+--   - 'evolution' → Fire Stone, Moon Stone, Everstone, ...
+--   - 'valuable'  → Heart Scale, Nugget, Pearl, ... (inclut Heart Scale,
+--                   monnaie des Move Experts)
+--
+-- Prix :
+--   price_buy  = montant (₽) quand l'item est en vente ; NULL sinon
+--   price_sell = montant (₽) récupéré en revente ; NULL si non-revendable
+-- Les deux peuvent être NULL (items trouvés/donnés sans valeur commerciale).
+
+-- 21bis. item
+CREATE TABLE IF NOT EXISTS item (
+    id         SERIAL       PRIMARY KEY,
+    name_en    VARCHAR(100) NOT NULL UNIQUE,
+    name_fr    VARCHAR(100),
+    category   VARCHAR(20)  NOT NULL CHECK (category IN ('fusion', 'evolution', 'valuable')),
+    effect     TEXT,        -- description textuelle (ex: "Fuses two Pokémon")
+    price_buy  INTEGER,     -- NULL si non vendu en boutique
+    price_sell INTEGER      -- NULL si non revendable
+);
+
+
 -- 21. move_expert_move
 CREATE TABLE IF NOT EXISTS move_expert_move (
     id                   SERIAL      PRIMARY KEY,
@@ -441,3 +469,6 @@ CREATE INDEX IF NOT EXISTS idx_move_expert_location     ON move_expert_move(expe
 -- move tutor
 CREATE INDEX IF NOT EXISTS idx_move_tutor_move          ON move_tutor(move_id);
 CREATE INDEX IF NOT EXISTS idx_move_tutor_location      ON move_tutor(location_id);
+
+-- items
+CREATE INDEX IF NOT EXISTS idx_item_category            ON item(category);
