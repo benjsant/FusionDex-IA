@@ -14,6 +14,7 @@ from backend.routes import (
     creator_route,
     fusion_route,
     generation_route,
+    item_route,
     move_route,
     pokemon_route,
     sprite_route,
@@ -63,4 +64,5 @@ app.include_router(creator_route.router)
 app.include_router(sprite_route.router)
 app.include_router(triple_fusion_route.router)
 app.include_router(stats_route.router)
+app.include_router(item_route.router)
 app.include_router(ai_route.router)

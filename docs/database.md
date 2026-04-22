@@ -33,6 +33,7 @@ PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.co
 | `triple_fusion`    | 23 fusions triples reconnues                                  |
 | `move_expert_move` | 65 règles Move Expert (Knot Island + Boon Island)             |
 | `move_tutor`       | 41 Move Tutors classiques (NPC, prix, localisation)           |
+| `item`             | 70 items (6 fusion + 24 evolution + 40 valuables)             |
 
 ## Focus : `move_expert_move`
 
