@@ -53,6 +53,40 @@ def test_move_detail_404(client: TestClient) -> None:
     assert r.status_code == 404
 
 
+def test_move_tutors_bug_bite(client: TestClient) -> None:
+    """Bug Bite (move #2) is taught on Route 2 for ₽2000."""
+    r = client.get("/moves/2/tutors")
+    assert r.status_code == 200
+    tutors = r.json()
+    assert len(tutors) == 1
+    assert tutors[0]["location_name_en"] == "Route 2"
+    assert tutors[0]["currency"] == "pokedollars"
+    assert tutors[0]["price"] == 2000
+    assert "bug catcher" in tutors[0]["npc_description"].lower()
+
+
+def test_move_tutors_empty(client: TestClient) -> None:
+    """A move with no tutor returns an empty list (not 404)."""
+    r = client.get("/moves/1/tutors")  # move #1 = Pound, no tutor
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_move_tutors_quest(client: TestClient) -> None:
+    """Quest-based tutors have NULL price and currency='quest'."""
+    # Find any tutor with currency='quest' — 5 exist total
+    # Soft-Boiled is taught free after a quest in Celadon City
+    # Use a direct lookup: moves with Soft-Boiled name
+    r = client.get("/moves/search?q=Soft-Boiled")
+    assert r.status_code == 200
+    moves = r.json()
+    assert len(moves) >= 1
+    r2 = client.get(f"/moves/{moves[0]['id']}/tutors")
+    assert r2.status_code == 200
+    tutors = r2.json()
+    assert any(t["currency"] == "quest" and t["price"] is None for t in tutors)
+
+
 def test_move_invalid_category(client: TestClient) -> None:
     r = client.get("/moves/?category=Bogus")
     assert r.status_code == 422

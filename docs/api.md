@@ -1,6 +1,6 @@
 # API backend
 
-FastAPI exposant 36 endpoints (+ `/health`). Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs). Référence auto-générée : [Routes](reference/routes.md).
+FastAPI exposant 37 endpoints (+ `/health`). Swagger interactif en dev : [http://localhost:58000/docs](http://localhost:58000/docs). Référence auto-générée : [Routes](reference/routes.md).
 
 En prod le backend n'est **pas** exposé publiquement — les requêtes passent par le proxy Next.js (`/api/*` sur le domaine public).
 
@@ -42,6 +42,7 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 | GET     | `/moves/search?q={nom}`              | Recherche nom EN/FR (accent-insensitive)           |
 | GET     | `/moves/by-type/{type_name}`         | Capacités d'un type (EN ou FR)                     |
 | GET     | `/moves/{id}`                        | Détail complet + descriptions                      |
+| GET     | `/moves/{id}/tutors`                 | NPCs enseignant ce move (prix + localisation)      |
 
 ### Abilities
 
