@@ -17,7 +17,6 @@ Pipeline en 12 étapes. Données actuelles :
 **Pistes ouvertes :**
 
 - [ ] Audit DB — Pokémon sans sprites, moves orphelins, cohérence des fusions
-- [ ] Mega-évolutions (pas couvertes)
 - [ ] Scheduler (Prefect ou n8n) pour automatiser les refresh
 
 ### Base de données — 🚧 ajouts planifiés
