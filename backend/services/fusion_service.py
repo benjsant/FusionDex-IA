@@ -48,6 +48,13 @@ def load_pokemon_with_types(db: Session, pid: int) -> Pokemon | None:
 NORMAL_TYPE_EN = "Normal"
 FLYING_TYPE_EN = "Flying"
 
+# Prix uniforme par expert (source : wiki IF — List_of_Move_Expert_Moves).
+# Knot Island = 2 Heart Scales/move, Boon Island = 10 Heart Scales/move.
+MOVE_EXPERT_PRICES_HEART_SCALES: dict[str, int] = {
+    "knot_island": 2,
+    "boon_island": 10,
+}
+
 
 def _slot_types(p: Pokemon) -> tuple[Type | None, Type | None]:
     """Retourne (type_slot1, type_slot2) du Pokémon (type2 à None si mono)."""
@@ -273,6 +280,9 @@ def compute_fusion_expert_moves(
     out = []
     for entry in qualified.values():
         entry["locations"] = sorted(entry["locations"])
+        entry["prices_heart_scales"] = {
+            loc: MOVE_EXPERT_PRICES_HEART_SCALES[loc] for loc in entry["locations"]
+        }
         out.append(entry)
     out.sort(key=lambda e: (e["locations"][0], e["name_en"]))
     return out

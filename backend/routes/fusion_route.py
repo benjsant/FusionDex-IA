@@ -166,6 +166,7 @@ def get_fusion_expert_moves(head_id: int, body_id: int, db: Session = Depends(ge
             pp=r["pp"],
             type=_to_type_out(r["type"]),
             locations=r["locations"],
+            prices_heart_scales=r["prices_heart_scales"],
         )
         for r in rows
     ]
