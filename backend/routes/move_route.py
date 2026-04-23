@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.db.session import get_db
-from backend.schemas.move import MoveDetail, MoveListItem, MoveTutorOut, PokemonMoveOut
+from backend.schemas.move import MoveDetail, MoveListItem, MoveTutorOut, PokemonMoveOut, TMInfo, TMLocationOut
 from backend.schemas.type_ import TypeOut
 from backend.services.move_service import (
     get_move_by_id,
+    get_tm_for_move,
     list_moves,
     list_moves_by_type,
     list_tutors_for_move,
@@ -104,10 +105,28 @@ def get_move_tutors(move_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{move_id}", response_model=MoveDetail)
 def get_move(move_id: int, db: Session = Depends(get_db)):
-    """Détail complet d'une capacité."""
+    """Détail complet d'une capacité. Inclut `tm` si le move est un TM."""
     move = get_move_by_id(db, move_id)
     if not move:
         raise HTTPException(status_code=404, detail="Move not found")
+
+    tm_info: TMInfo | None = None
+    tm = get_tm_for_move(db, move.id)
+    if tm is not None:
+        tm_info = TMInfo(
+            number=tm.number,
+            location_summary=tm.location,
+            locations=[
+                TMLocationOut(
+                    location_id=tl.location_id,
+                    location_name_en=tl.location.name_en,
+                    location_name_fr=tl.location.name_fr,
+                    notes=tl.notes,
+                )
+                for tl in tm.locations
+            ],
+        )
+
     return MoveDetail(
         id=move.id,
         name_en=move.name_en,
@@ -125,4 +144,5 @@ def get_move(move_id: int, db: Session = Depends(get_db)):
             name_fr=move.type.name_fr,
             is_triple_fusion_type=move.type.is_triple_fusion_type,
         ),
+        tm=tm_info,
     )

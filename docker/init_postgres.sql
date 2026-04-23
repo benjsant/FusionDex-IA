@@ -71,11 +71,28 @@ CREATE TABLE IF NOT EXISTS move (
 );
 
 -- 5. tm  (121 CTs disponibles dans Infinite Fusion)
+--
+--    `location` est conservé comme résumé texte prêt à afficher (ex:
+--    "Route 13 (Surf)"). Pour une résolution structurée (1 TM ↔ N lieux),
+--    voir la table `tm_location` ci-dessous.
 CREATE TABLE IF NOT EXISTS tm (
     id       SERIAL  PRIMARY KEY,
     number   INTEGER NOT NULL UNIQUE,   -- 1 = TM01, 121 = TM121
     move_id  INTEGER NOT NULL REFERENCES move(id),
-    location TEXT                       -- localisation dans le jeu IF
+    location TEXT                       -- résumé texte prêt à afficher
+);
+
+-- 5bis. tm_location  (jonction TM ↔ lieu, N-N — un TM peut être trouvé
+-- à plusieurs endroits : ex TM13 au Celadon Game Corner ET via la mission
+-- Team Rocket)
+--   notes : contexte laissé libre par le wiki (ex : "Surf", "Gym",
+--           "Dept. Store", "Team Rocket mission", "Required Surf")
+CREATE TABLE IF NOT EXISTS tm_location (
+    id          SERIAL  PRIMARY KEY,
+    tm_id       INTEGER NOT NULL REFERENCES tm(id) ON DELETE CASCADE,
+    location_id INTEGER NOT NULL REFERENCES location(id),
+    notes       TEXT,
+    UNIQUE (tm_id, location_id, notes)
 );
 
 
@@ -472,3 +489,7 @@ CREATE INDEX IF NOT EXISTS idx_move_tutor_location      ON move_tutor(location_i
 
 -- items
 CREATE INDEX IF NOT EXISTS idx_item_category            ON item(category);
+
+-- tm
+CREATE INDEX IF NOT EXISTS idx_tm_location_tm           ON tm_location(tm_id);
+CREATE INDEX IF NOT EXISTS idx_tm_location_location     ON tm_location(location_id);

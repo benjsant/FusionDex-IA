@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session, joinedload
 
-from backend.db.models import Location, Move, MoveTutor, PokemonMove
+from backend.db.models import Location, Move, MoveTutor, PokemonMove, TM, TMLocation
 from backend.utils.text import normalize
 
 
@@ -90,6 +90,16 @@ def list_pokemon_moves(db: Session, pokemon_id: int) -> list[PokemonMove]:
         .filter(PokemonMove.pokemon_id == pokemon_id)
         .order_by(PokemonMove.method, PokemonMove.level)
         .all()
+    )
+
+
+def get_tm_for_move(db: Session, move_id: int) -> TM | None:
+    """Return the TM row for a given move (with locations eagerly loaded), or None."""
+    return (
+        db.query(TM)
+        .options(joinedload(TM.locations).joinedload(TMLocation.location))
+        .filter(TM.move_id == move_id)
+        .first()
     )
 
 
