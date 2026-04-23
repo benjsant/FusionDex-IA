@@ -3,7 +3,7 @@ from backend.db.models.type_ import Type
 from backend.db.models.type_effectiveness import TypeEffectiveness
 from backend.db.models.ability import Ability
 from backend.db.models.move import Move
-from backend.db.models.tm import TM
+from backend.db.models.tm import TM, TMLocation
 from backend.db.models.location import Location
 from backend.db.models.pokemon import Pokemon
 from backend.db.models.pokemon_type import PokemonType
@@ -30,6 +30,7 @@ __all__ = [
     "Ability",
     "Move",
     "TM",
+    "TMLocation",
     "Location",
     "Pokemon",
     "PokemonType",

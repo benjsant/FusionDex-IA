@@ -24,6 +24,7 @@ PostgreSQL 16. Schéma défini dans [docker/init_postgres.sql](https://github.co
 | `pokemon_move`          | Learnset : 40 067 lignes (level-up, TM, tutor, egg)   |
 | `pokemon_evolution`     | Arbres d'évolution (pre + post)                       |
 | `pokemon_location`      | Zones de capture IF                                   |
+| `tm` + `tm_location`    | 121 CTs + 115 liaisons CT ↔ lieu (jonction N-N)       |
 
 ### Fusions
 
