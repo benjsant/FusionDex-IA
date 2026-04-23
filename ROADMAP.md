@@ -14,7 +14,6 @@ Pipeline complet en 12 étapes, factorisé en helpers :
 
 **Pistes restantes**
 - Audit DB — Pokémon sans sprites, moves orphelins, cohérence des fusions
-- Mega-évolutions (pas couvertes pour l'instant)
 - Scheduler (Prefect ou n8n) pour automatiser les refresh
 
 ## Base de données — 🚧 ajouts planifiés
