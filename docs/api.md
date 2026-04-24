@@ -102,13 +102,24 @@ Chaque `route` importe son `service`, qui importe ses `models` et `schemas`. Les
 | GET     | `/stats/coverage`                   | Audit de complétude DB                         |
 | GET     | `/health`                           | Healthcheck (Docker + CI)                      |
 
-### IA (DeepSeek)
+### IA (DeepSeek agentique)
 
 | Méthode | Chemin      | Description                                                                 |
 | ------- | ----------- | --------------------------------------------------------------------------- |
-| POST    | `/ai/ask`   | Assistant conversationnel IF — streaming SSE. `503` si `DEEPSEEK_API_KEY` absente. |
+| POST    | `/ai/ask`   | Agent avec tool calling DeepSeek — streaming SSE. `503` si `DEEPSEEK_API_KEY` absente. |
 
 Payload : `{ "message": "...", "context": "..." }` (context optionnel pour injecter la sélection courante — ex. *"Pokémon Dracaufeu id=6, fusion avec Mewtwo id=150"*).
+
+**Fonctionnement** (Phase 1 de la roadmap IA) :
+
+1. Le LLM reçoit la question + la liste des 5 tools BDD (`get_pokemon`, `get_fusion`, `search_move`, `get_item`, `get_move_tutors`)
+2. Il peut choisir d'appeler 1+ tools → le backend exécute et renvoie les résultats
+3. Boucle jusqu'à ce que le LLM rende une réponse textuelle
+4. **Circuit breaker** : max 5 itérations, sinon *« Je n'ai pas trouvé cette information. »*
+5. **Fail-closed** : si la réponse finale est vide, même message de refus
+6. Le streaming SSE ne concerne que la réponse finale (les tool calls restent internes)
+
+Les specs des tools sont dans [backend/services/ai_tools.py](https://github.com/benjsant/FusionDex-IA/blob/main/backend/services/ai_tools.py) et la boucle dans [backend/services/ai_service.py](https://github.com/benjsant/FusionDex-IA/blob/main/backend/services/ai_service.py).
 
 ## CORS
 
