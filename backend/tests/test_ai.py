@@ -63,15 +63,29 @@ class FakeClient:
 
 @pytest.fixture
 def fake_client_factory(monkeypatch):
-    """Install a fake DeepSeek client. Returns a function that records it."""
+    """Install a fake DeepSeek client + canned tool dispatch.
+
+    `dispatch_tool` is mocked to return tool-name-specific stubs so these
+    tests don't need a populated DB (CI runs without Postgres). Real
+    tool↔DB integration is covered separately in `test_ai_tools.py`.
+    """
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key-fake")
 
-    installed: dict = {}
+    def fake_dispatch_tool(_db, name: str, args: dict) -> dict:
+        # Canned, deterministic responses — sufficient for loop testing.
+        if name == "get_pokemon":
+            return {
+                "id": args.get("name_or_id"),
+                "name_en": "Pikachu" if args.get("name_or_id") == 25 else "Charizard",
+                "types": ["Electric"],
+            }
+        return {"ok": True, "tool": name, "args": args}
+
+    monkeypatch.setattr(ai_service, "dispatch_tool", fake_dispatch_tool)
 
     def install(responses: list) -> FakeClient:
         client = FakeClient(responses)
         monkeypatch.setattr(ai_service, "_get_client", lambda: client)
-        installed["client"] = client
         return client
 
     yield install
