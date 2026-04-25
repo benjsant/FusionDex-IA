@@ -103,6 +103,32 @@ CORS_ALLOWED_ORIGINS=http://localhost:53000,http://localhost:58000
 
 En prod, lister uniquement le domaine public.
 
+### Assistant IA (DeepSeek)
+
+L'endpoint `POST /ai/ask` utilise [DeepSeek](https://platform.deepseek.com/) en provider cloud (compatible OpenAI). Le fonctionnement complet (boucle tool-calling, fail-closed, circuit breaker) est documenté côté [API](api.md#ia-deepseek-agentique).
+
+```dotenv
+# Active l'assistant. Sans cette variable, POST /ai/ask répond 503.
+DEEPSEEK_API_KEY=sk-...
+```
+
+Étapes :
+
+1. Créer un compte sur [platform.deepseek.com](https://platform.deepseek.com/)
+2. Générer une clé API
+3. Décommenter et coller la clé dans `.env`
+4. `docker compose up -d backend` (la clé est lue à runtime, pas besoin de rebuild)
+
+!!! note "Test rapide"
+    ```bash
+    curl -X POST http://localhost:58000/ai/ask \
+      -H 'Content-Type: application/json' \
+      -d '{"message": "Que peut apprendre la fusion Pikachu × Charizard ?"}'
+    ```
+
+!!! warning "Fallback Ollama local — à venir"
+    Pour ceux sans clé DeepSeek, un fallback Ollama (LLM local en Docker) est planifié dans une PR suivante. En attendant, sans `DEEPSEEK_API_KEY` l'endpoint retourne `503` proprement.
+
 ### Proxy Next.js
 
 ```dotenv
